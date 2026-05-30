@@ -882,5 +882,33 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
 
         function toggleAppTheme() { document.body.classList.toggle('dark-mode'); }
     </script>
+<script type="module">
+  // Importation des modules Firebase nécessaires
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+
+  // Ta configuration Firebase personnelle
+  const firebaseConfig = {
+    apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
+    authDomain: "kaza-bf0dc.firebaseapp.com",
+    projectId: "kaza-bf0dc",
+    storageBucket: "kaza-bf0dc.firebasestorage.app",
+    messagingSenderId: "785266371417",
+    appId: "1:785266371417:web:9dc8df1cfef4e12ec63a48",
+    measurementId: "G-MTDDTVT839"
+  };
+
+  // Initialisation de Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // Rendre les variables accessibles partout dans ton code Kaza
+  window.db = db;
+  window.auth = auth;
+  
+  console.log("Kaza est connecté à Firebase avec succès !");
+</script>
 </body>
 </html>
