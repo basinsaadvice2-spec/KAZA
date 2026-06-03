@@ -720,7 +720,8 @@
                             <span class="apartment-card-badge" style="background:${isOccupied ? '#e74c3c' : 'var(--primary)'}">${item.status || 'Disponible'}</span>
                         </div>
                         ${miniaturesHtml}
-                        <div class="apartment-card-details">                            <span class="apartment-card-location">${item.commune}, Kinshasa • Par ${item.ownerName}</span>
+                        <div class="apartment-card-details">
+                                    <span class="apartment-card-location">${item.commune}, Kinshasa • Par ${item.ownerName}</span>
                             <h4 class="apartment-card-title">${item.title}</h4>
                             <p class="apartment-card-address-detail" style="margin: 6px 0;"><i class="fa-solid fa-location-dot" style="color:var(--primary)"></i> <strong>${fullAddressString}</strong><br><small style="color:var(--text-muted); font-style:italic;">Réf: ${item.reference}</small></p>
                             <div style="margin-top: 8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">${actionButton} ${paymentButton}</div>
@@ -900,5 +901,3 @@
 </script>
 </body>
 </html>
-
-        
