@@ -2,292 +2,284 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kaza - Version Adresse Détaillée</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaza — Pilotez votre immobilier</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        /* Variables de couleurs Premium (Thème Clair / Sombre) */
         :root {
-            --bg-app: #f8fafc; --surface: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
-            --primary: #007bff; --primary-gradient: linear-gradient(135deg, #0056b3, #007bff);
-            --secondary: #2ecc71; --secondary-gradient: linear-gradient(135deg, #27ae60, #2ecc71);
-            --border: #e2e8f0; --input-bg: #f1f5f9; --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.03);
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --input-bg: #f1f5f9;
+            --primary: #4f46e5;
+            --primary-gradient: linear-gradient(135deg, #4f46e5, #6366f1);
+            --secondary: #10b981;
+            --secondary-gradient: linear-gradient(135deg, #10b981, #059669);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+            --shadow-md: 0 8px 24px rgba(15,23,42,0.08);
         }
-        body.dark-mode {
-            --bg-app: #0b111e; --surface: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8;
-            --border: #334155; --input-bg: #0f172a;
+
+        .dark-mode {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --input-bg: #1e293b;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
         }
-        
-        /* Reset et Styles de Base */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        body { background: var(--bg-app); min-height: 100vh; width: 100vw; overflow-x: hidden; color: var(--text-main); }
-        .app-shell { width: 100%; min-height: 100vh; display: flex; flex-direction: column; position: relative; }
-        
-        /* Structure des Écrans */
-        .screen-view { display: none; flex: 1; flex-direction: column; padding: 20px; overflow-y: auto; }
-        .screen-view.active { display: flex; }
-        .btn-navigation-back { color: var(--primary); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 15px; }
-        
-        /* Écran d'accueil Kaza */
-        .brand-section { text-align: center; margin: 40px 0 30px; }
-        .brand-icon-wrapper { width: 84px; height: 84px; background: var(--primary-gradient); color: #ffffff; border-radius: 24px; display: flex; justify-content: center; align-items: center; font-size: 40px; margin: 0 auto 18px; box-shadow: 0 12px 24px rgba(0,123,255,0.3); }
-        .brand-display-name { font-size: 36px; font-weight: 900; letter-spacing: -1px; }
-        .brand-display-tagline { color: var(--text-muted); font-size: 15px; margin-top: 6px; }
 
-        /* Grille des choix de profils */
-        .gateway-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 10px; }
-        .gateway-card { background: var(--surface); border: 1px solid var(--border); padding: 20px 14px; border-radius: 22px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: var(--shadow-sm); transition: transform 0.2s; }
-        .gateway-card:active { transform: scale(0.96); }
-        .gateway-icon-zone { width: 52px; height: 52px; border-radius: 16px; display: flex; justify-content: center; align-items: center; font-size: 22px; margin-bottom: 14px; }
-        .owner-type .gateway-icon-zone { background: #e0f2fe; color: var(--primary); }
-        .tenant-type .gateway-icon-zone { background: #dcfce7; color: var(--secondary); }
-        .gateway-metadata h3 { font-size: 15px; font-weight: 700; color: var(--text-main); line-height: 1.3; }
-        .gateway-metadata p { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
-              /* Formulaires d'authentification et d'ajout */
-        .form-main-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
-        .form-main-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
-        .form-fields-wrapper { margin-bottom: 20px; }
-        .form-input-container { position: relative; margin-bottom: 14px; }
-        .form-input-container i { position: absolute; left: 16px; top: 16px; color: var(--text-muted); font-size: 16px; z-index: 2; }
-        .form-input-container input, .form-input-container select { width: 100%; padding: 16px 16px 16px 48px; background: var(--input-bg); border: 1px solid transparent; border-radius: 14px; font-size: 15px; color: var(--text-main); outline: none; }
-        .form-input-container input:focus, .form-input-container select:focus { border-color: var(--primary); background: var(--surface); }
-        
-        /* Grille d'adresse spécifique */
-        .address-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 14px; }
-        .address-grid .form-input-container { margin-bottom: 0; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color:transparent; }
+        body { background:var(--background); color:var(--text-main); transition: background 0.3s; padding-bottom: 80px; }
 
-        /* Boutons et Onglets Tableaux de bord */
-        .btn-submit-form { width: 100%; padding: 16px; border-radius: 14px; border: none; font-size: 16px; font-weight: 700; color: #ffffff; cursor: pointer; }
-        .btn-submit-form.owner-theme { background: var(--primary-gradient); box-shadow: 0 8px 24px rgba(0,123,255,0.25); }
-        .btn-submit-form.tenant-theme { background: var(--secondary-gradient); box-shadow: 0 8px 24px rgba(46,204,113,0.25); }
-        .form-foot-link { text-align: center; color: var(--primary); font-size: 14px; font-weight: 600; margin-top: 20px; cursor: pointer; }
-        
-        .dashboard-top-bar { background: linear-gradient(135deg, #0052cc, #007bff); margin: -20px -20px 20px -20px; padding: 24px 20px 18px 20px; color: #ffffff; border-bottom-left-radius: 26px; border-bottom-right-radius: 26px; }
-        .dashboard-top-bar.tenant-theme { background: linear-gradient(135deg, #1e7e34, #2ecc71); }
-        .dashboard-user-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .dashboard-brand-title { font-size: 24px; font-weight: 800; }
-        .dashboard-user-subtitle { font-size: 13px; opacity: 0.85; margin-top: 2px; }
-        .btn-dark-toggle { background: rgba(255,255,255,0.18); border: none; width: 38px; height: 38px; border-radius: 50%; color: #ffffff; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 16px; }
-        .dashboard-navigation-tabs { display: flex; background: rgba(0, 0, 0, 0.15); border-radius: 14px; padding: 4px; }
-        .tab-navigation-item { flex: 1; text-align: center; padding: 12px 2px; color: rgba(255,255,255,0.65); font-size: 11px; font-weight: 600; cursor: pointer; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .tab-navigation-item.active { background: rgba(255, 255, 255, 0.2); color: #ffffff; }
-        .dashboard-content-area { flex: 1; display: flex; flex-direction: column; }
-        
-        /* Barres de filtrage et recherche */
-        .search-filter-box { background: var(--surface); padding: 12px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 16px; }
-        .filter-tags-scroll { display: flex; gap: 8px; overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
-        .filter-tag { background: var(--input-bg); color: var(--text-main); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1px solid transparent; }
-        .filter-tag.active { background: var(--primary-gradient); color: white; }
-        .tenant-theme .filter-tag.active { background: var(--secondary-gradient); }
+        /* Vues de l'application (Écrans) */
+        .screen-view { display:none; max-width: 480px; margin: 0 auto; padding: 20px; animation: fadeIn 0.3s ease-out; }
+        .screen-view.active { display:block; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-        /* Statistiques et Cartes Immobilières */
-        .stats-grid-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-        .stats-kpi-card { background: var(--surface); padding: 16px; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
-        .stats-kpi-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12px; color: var(--text-muted); font-weight: 600; }
-        .stats-kpi-number { font-size: 26px; font-weight: 800; }
-        .blue-indicator i { color: var(--primary); } .green-indicator i { color: var(--secondary); }
+        /* Écran d'accueil - Rôles */
+        .role-selection-layout { display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:85vh; text-align:center; }
+        .app-brand-logo { font-size:36px; font-weight:800; background:var(--primary-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:10px; letter-spacing:-1px; }
+        .app-brand-tagline { font-size:14px; color:var(--text-muted); margin-bottom:40px; font-weight:500; }
         
-        .action-context-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-        .context-title { font-weight: 800; font-size: 16px; }
-        .btn-action-trigger { background: var(--primary-gradient); color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
-        
-        .apartment-card-ui { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-bottom: 16px; box-shadow: var(--shadow-sm); cursor: pointer; }
-        .apartment-card-image-placeholder { height: 160px; background: #e2e8f0; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        .apartment-card-image-placeholder img { width: 100%; height: 100%; object-fit: cover; }
-        .apartment-card-badge { position: absolute; top: 12px; right: 12px; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-        .apartment-card-details { padding: 16px; }
-        .apartment-card-location { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
-        .apartment-card-title { font-size: 16px; font-weight: 700; margin-top: 2px; }
-        .apartment-card-address-detail { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
-        .apartment-card-pricing-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-        .apartment-card-price { font-size: 17px; font-weight: 800; color: var(--primary); }
-        
-        /* Messagerie Privée (Style WhatsApp) */
-        .chat-list-item { background: var(--surface); padding: 14px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; position: relative; }
-        .chat-avatar { width: 44px; height: 44px; background: var(--input-bg); color: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 700; }
-        .chat-info { flex: 1; min-width: 0; }
-        .chat-info h4 { font-size: 15px; font-weight: 700; }
-        .chat-info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .chat-window-messages { flex: 1; min-height: 320px; max-height: 450px; padding: 10px 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.4; position: relative; cursor: pointer; }
-        .msg-bubble.incoming { background: var(--surface); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border); }
-        .msg-bubble.outgoing { background: var(--primary-gradient); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .tenant-theme .msg-bubble.outgoing { background: var(--secondary-gradient); }
-        .msg-meta { font-size: 10px; opacity: 0.6; text-align: right; margin-top: 4px; display: block; }
-        
-        .chat-input-bar { display: flex; gap: 10px; padding-top: 10px; border-top: 1px solid var(--border); background: var(--bg-app); position: sticky; bottom: 0; }
-        .chat-input-bar input { flex: 1; padding: 14px; border-radius: 24px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); outline: none; }
-        .btn-send-msg { width: 48px; height: 48px; border-radius: 50%; background: var(--primary-gradient); color: white; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 18px; }
-        .tenant-theme .btn-send-msg { background: var(--secondary-gradient); }
+        .role-interactive-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:24px; width:100%; margin-bottom:20px; text-align:left; cursor:pointer; transition:all 0.2s ease; box-shadow:var(--shadow-sm); }
+        .role-interactive-card:active { transform:scale(0.98); box-shadow:var(--shadow-md); }
+        .role-card-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:16px; color:#fff; }
+        .role-card-icon.owner { background:var(--primary-gradient); }
+        .role-card-icon.tenant { background:var(--secondary-gradient); }
+        .role-interactive-card h3 { font-size:18px; font-weight:700; margin-bottom:6px; }
+        .role-interactive-card p { font-size:13px; color:var(--text-muted); line-height:1.5; }
 
-        .blank-slate { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
-        .blank-slate i { font-size: 40px; margin-bottom: 10px; display: block; opacity: 0.3; }
-        .file-upload-btn { background: var(--border); color: var(--text-main); padding: 14px; border-radius: 12px; display: block; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
-        #preview-img-container { width: 100%; height: 120px; border-radius: 14px; object-fit: cover; display: none; margin-bottom: 14px; }
+        /* En-têtes des Tableaux de bord */
+        .dashboard-ui-header { display:flex; justify-content:between; align-items:center; margin-bottom:24px; margin-top:10px; width:100%; }
+        .profile-greetings h2 { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+        .profile-greetings p { font-size:12px; color:var(--text-muted); margin-top:2px; }
+        .header-utility-actions { display:flex; gap:10px; margin-left: auto; }
+        .circle-action-btn { width:40px; height:40px; border-radius:50%; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:16px; cursor:pointer; }
+
+        /* Grille des KPIs Statistiques */
+        .stats-grid-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+        .stats-kpi-card { background:var(--surface); border:1px solid var(--border); padding:16px; border-radius:20px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
+        .stats-kpi-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; }
+        .stats-kpi-card.blue-indicator::before { background:var(--primary); }
+        .stats-kpi-card.green-indicator::before { background:var(--secondary); }
+        .stats-kpi-header { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+        .stats-kpi-number { font-size:24px; font-weight:800; color:var(--text-main); }
+
+        /* Cartes Logements / Annonces */
+        .apartment-card-ui { background:var(--surface); border:1px solid var(--border); border-radius:24px; overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow-sm); }
+        .apartment-card-image-placeholder { width:100%; height:200px; background:var(--input-bg); position:relative; display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--text-muted); }
+        .apartment-card-image-placeholder img { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
+        .apartment-card-badge { position:absolute; top:16px; right:16px; padding:6px 14px; border-radius:20px; color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; }
+        
+        /* Galerie multi-photos miniatures */
+        .gallery-miniatures { display: flex; gap: 8px; padding: 10px 16px; background: var(--background); border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .gallery-miniatures img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 1px solid var(--border); }
+        .gallery-miniatures img:hover { border-color: var(--primary); }
+
+        .apartment-card-details { padding:20px; }
+        .apartment-card-location { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px; }
+        .apartment-card-title { font-size:17px; font-weight:700; margin-top:4px; margin-bottom:8px; line-height:1.3; }
+        .apartment-card-address-detail { font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:14px; }
+        .apartment-card-pricing-row { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:14px; margin-top:14px; }
+        .apartment-card-price { font-size:18px; font-weight:800; color:var(--text-main); }
+        .apartment-card-price small { font-size:12px; font-weight:400; color:var(--text-muted); }
+
+        /* Formulaires globalisés */
+        .form-input-container { margin-bottom:16px; position:relative; }
+        .form-input-container label { display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:var(--text-main); }
+        .form-input-container i { position:absolute; left:16px; top:38px; color:var(--text-muted); font-size:14px; }
+        .form-input-container input, .form-input-container select, .form-input-container textarea { width:100%; padding:14px 16px 14px 44px; border-radius:14px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:14px; font-weight:500; outline:none; transition:all 0.2s; }
+        .form-input-container input:focus, .form-input-container select:focus { border-color:var(--primary); background:var(--surface); }
+        .btn-submit-form { width:100%; padding:16px; border-radius:14px; border:none; color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:10px; box-shadow:var(--shadow-sm); }
+        .btn-submit-form.owner-theme { background:var(--primary-gradient); }
+        .btn-submit-form.tenant-theme { background:var(--secondary-gradient); }
+
+        /* Menu de navigation Bas (Bottom Nav Bar) */
+        .bottom-navigation-bar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:var(--surface); border-top:1px solid var(--border); height:68px; display:grid; grid-template-columns:repeat(3, 1fr); align-items:center; text-align:center; box-shadow:0 -4px 16px rgba(0,0,0,0.03); z-index:999; }
+        .tab-navigation-item { display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; height:100%; gap:4px; }
+        .tab-navigation-item i { font-size:18px; }
+        .tab-navigation-item.active { color:var(--primary); }
+        .tenant-theme .tab-navigation-item.active { color:var(--secondary); }
+
+        /* Filtres de recherche du locataire */
+        .search-filter-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:14px; margin-bottom:20px; box-shadow:var(--shadow-sm); }
+        .filter-tags-scroll { display:flex; gap:8px; overflow-x:auto; padding-top:10px; padding-bottom:4px; }
+        .filter-tags-scroll::-webkit-scrollbar { display:none; }
+        .filter-tag { padding:6px 14px; border-radius:20px; background:var(--input-bg); font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; white-space:nowrap; }
+        .filter-tag.active { background:var(--secondary); color:#fff; }
+
+        /* Messagerie & Liste des Discussions */
+        .action-context-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .context-title { font-size:15px; font-weight:700; }
+        .btn-action-trigger { background:var(--primary-gradient); border:none; border-radius:10px; color:#fff; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; }
+        .chat-list-item { display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); padding:14px; border-radius:16px; margin-bottom:12px; cursor:pointer; box-shadow:var(--shadow-sm); }
+        .chat-avatar { width:44px; height:44px; border-radius:50%; background:var(--input-bg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; text-transform:uppercase; color:var(--primary); border:1px solid var(--border); }
+        .chat-info { flex:1; }
+        .chat-info h4 { font-size:14px; font-weight:700; margin-bottom:2px; }
+        .chat-info p { font-size:12px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px; }
+
+        /* Fenêtre de Chat Room */
+        .chat-header-bar { display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); padding:14px; border-radius:18px; margin-bottom:16px; box-shadow:var(--shadow-sm); }
+        .chat-messages-scrollarea { height:55vh; overflow-y:auto; padding:10px 4px; display:flex; flex-direction:column; gap:12px; }
+        .msg-bubble { max-width:75%; padding:12px 14px; border-radius:16px; font-size:13px; line-height:1.5; position:relative; box-shadow:var(--shadow-sm); }
+        .msg-bubble.incoming { background:var(--surface); border:1px solid var(--border); align-self:flex-start; border-top-left-radius:4px; cursor:pointer; }
+        .msg-bubble.outgoing { background:var(--primary-gradient); color:#fff; align-self:flex-end; border-top-right-radius:4px; }
+        .tenant-theme .msg-bubble.outgoing { background:var(--secondary-gradient); }
+        .msg-meta { display:block; font-size:9px; text-align:right; margin-top:4px; opacity:0.6; }
+        .chat-input-row { display:flex; gap:10px; margin-top:14px; background:var(--surface); border:1px solid var(--border); padding:8px; border-radius:16px; box-shadow:var(--shadow-sm); }
+        .chat-input-row input { flex:1; border:none; background:transparent; outline:none; padding-left:10px; font-size:13px; color:var(--text-color); }
+        .btn-send-message { width:40px; height:40px; border-radius:12px; background:var(--primary-gradient); border:none; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+        .tenant-theme .btn-send-message { background:var(--secondary-gradient); }
+
+        .blank-slate { text-align:center; padding:40px 20px; color:var(--text-muted); font-size:13px; font-weight:500; display:flex; flex-direction:column; gap:10px; align-items:center; }
+        .blank-slate i { font-size:32px; opacity:0.4; }
+        
+        /* Bouton Spécial d'installation PWA Mobile */
+        .pwa-fixed-button { display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--text-main); color:var(--background); padding:10px 18px; border-radius:30px; font-size:12px; font-weight:700; box-shadow:var(--shadow-md); z-index:10000; border:none; cursor:pointer; }
     </style>
 </head>
 <body>
-    <div class="app-shell">
+    <button id="pwa-install-btn" class="pwa-fixed-button"><i class="fa-solid fa-mobile-screen-button"></i> Ajouter Kaza à l'écran d'accueil</button>
 
-        <div id="scr-welcome" class="screen-view active">
-            <div class="brand-section">
-                <div class="brand-icon-wrapper"><i class="fa-solid fa-house-chimney"></i></div>
-                <h1 class="brand-display-name">Kaza</h1>
-                <p class="brand-display-tagline">L'immobilier connecté à Kinshasa</p>
-            </div>
-            <div class="gateway-grid">
-                <div class="gateway-card owner-type" onclick="openAuthScreen('owner')">
-                    <div class="gateway-icon-zone"><i class="fa-solid fa-user-tie"></i></div>
-                    <div class="gateway-metadata">
-                        <h3>Bailleur</h3>
-                        <p>Gérer mes biens & loyers</p>
-                    </div>
-                </div>
-                <div class="gateway-card tenant-type" onclick="openAuthScreen('tenant')">
-                    <div class="gateway-icon-zone"><i class="fa-solid fa-house-user"></i></div>
-                    <div class="gateway-metadata">
-                        <h3>Locataire</h3>
-                        <p>Trouver un bail & discuter</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="scr-auth" class="screen-view">
-            <div class="btn-navigation-back" onclick="changeView('scr-welcome')"><i class="fa-solid fa-arrow-left"></i> Retour</div>
-            <h2 id="auth-title" class="form-main-title">Connexion</h2>
-            <p id="auth-subtitle" class="form-main-subtitle">Entrez vos accès pour piloter votre espace Kaza.</p>
+    <div id="scr-role-select" class="screen-view active">
+        <div class="role-selection-layout">
+            <h1 class="app-brand-logo">Kaza</h1>
+            <p class="app-brand-tagline">Gestion immobilière & Connectivité de confiance</p>
             
-            <div class="form-fields-wrapper">
-                <div class="form-input-container" id="container-auth-name">
-                    <i class="fa-solid fa-user"></i>
-                    <input type="text" id="auth-name" placeholder="Nom complet">
-                </div>
-                <div class="form-input-container" id="container-auth-phone">
-                    <i class="fa-solid fa-phone"></i>
-                    <input type="tel" id="auth-phone" placeholder="Numéro de téléphone (ex: +243...)">
-                </div>
-                <div class="form-input-container">
-                    <i class="fa-solid fa-envelope"></i>
-                    <input type="email" id="auth-email" placeholder="Adresse Email">
-                </div>
-                <div class="form-input-container">
-                    <i class="fa-solid fa-lock"></i>
-                    <input type="password" id="auth-password" placeholder="Mot de passe">
-                </div>
+            <div class="role-interactive-card" onclick="openAuthScreen('owner')">
+                <div class="role-card-icon owner"><i class="fa-solid fa-building-user"></i></div>
+                <h3>Espace Bailleur</h3>
+                <p>Publiez vos résidences à Kinshasa, suivez vos encaissements et communiquez instantanément avec vos locataires.</p>
             </div>
-            <button id="btn-auth-submit" class="btn-submit-form" onclick="submitAuthForm()">Valider</button>
-            <div id="auth-toggle-mode-link" class="form-foot-link" onclick="toggleAuthMode()">Pas encore de compte ? S'inscrire</div>
-        </div>
-                <div id="scr-owner-dashboard" class="screen-view">
-            <div class="dashboard-top-bar">
-                <div class="dashboard-user-row">
-                    <div>
-                        <h2 class="dashboard-brand-title">Kaza Pro</h2>
-                        <p class="dashboard-user-subtitle">Bailleur : <strong id="owner-profile-display">...</strong></p>
-                    </div>
-                    <button class="btn-dark-toggle" onclick="toggleAppTheme()"><i class="fa-solid fa-moon"></i></button>
-                </div>
-                <div class="dashboard-navigation-tabs">
-                    <div id="nav-tab-owner-home" class="tab-navigation-item active" onclick="activateOwnerTab('home')"><i class="fa-solid fa-table-cells-large"></i><span>Statistiques</span></div>
-                    <div id="nav-tab-owner-apparts" class="tab-navigation-item" onclick="activateOwnerTab('apparts')"><i class="fa-solid fa-house"></i><span>Mes Biens</span></div>
-                    <div id="nav-tab-owner-chats" class="tab-navigation-item" onclick="activateOwnerTab('chats')"><i class="fa-solid fa-comment-dots"></i><span>Messages</span></div>
-                </div>
-            </div>
-            <div id="owner-tab-injector" class="dashboard-content-area"></div>
-        </div>
 
-        <div id="scr-add-appart" class="screen-view">
-            <div class="btn-navigation-back" onclick="changeView('scr-owner-dashboard')"><i class="fa-solid fa-xmark"></i> Annuler</div>
-            <h2 class="form-main-title">Nouveau Bien</h2>
-            <p class="form-main-subtitle">Renseignez la localisation exacte du logement à publier sur Kinshasa.</p>
-            
-            <div class="form-fields-wrapper">
-                <div class="form-input-container">
-                    <i class="fa-solid fa-hotel"></i>
-                    <select id="app-type" onchange="toggleAppartNumberField(this.value)">
-                        <option value="Appartement">Appartement</option>
-                        <option value="Maison">Maison</option>
-                        <option value="Studio">Studio</option>
-                    </select>
-                </div>
-
-                <div class="form-input-container"><i class="fa-solid fa-heading"></i><input type="text" id="app-title" placeholder="Nom commercial (Ex: Résidence Royale)"></div>
-                
-                <div class="form-input-container">
-                    <i class="fa-solid fa-map-location-dot"></i>
-                    <select id="app-commune">
-                        <option value="Gombe">Gombe</option>
-                        <option value="Ngaliema">Ngaliema</option>
-                        <option value="Kintambo">Kintambo</option>
-                        <option value="Limete">Limete</option>
-                    </select>
-                </div>
-
-                <div class="address-grid">
-                    <div class="form-input-container"><i class="fa-solid fa-road"></i><input type="text" id="app-avenue" placeholder="Avenue / Rue"></div>
-                    <div class="form-input-container"><i class="fa-solid fa-arrow-up-9-1"></i><input type="text" id="app-street-number" placeholder="N°"></div>
-                </div>
-
-                <div class="form-input-container" id="container-app-door">
-                    <i class="fa-solid fa-door-closed"></i>
-                    <input type="text" id="app-door" placeholder="Numéro Appartement / Porte (Ex: A1, 2B...)">
-                </div>
-
-                <div class="form-input-container"><i class="fa-solid fa-location-crosshairs"></i><input type="text" id="app-reference" placeholder="Référence (Ex: Derrière l'arrêt de bus, Réf...)"></div>
-
-                <div class="form-input-container"><i class="fa-solid fa-dollar-sign"></i><input type="number" id="app-price" placeholder="Loyer mensuel (USD)"></div>
-                <div class="form-input-container"><i class="fa-solid fa-bed"></i><input type="text" id="app-specs" placeholder="Spécifications (Ex: 3 Ch. • 2 Sdb.)"></div>
-                
-                <label class="file-upload-btn" for="app-file"><i class="fa-solid fa-camera"></i> Télécharger une photo</label>
-                <input type="file" id="app-file" accept="image/*" style="display:none;" onchange="previewImage(event)">
-                <img id="preview-img-container" alt="Aperçu">
-            </div>
-            <button class="btn-submit-form owner-theme" onclick="saveNewApartment()">Publier l'annonce</button>
-        </div>
-
-        <div id="scr-tenant-dashboard" class="screen-view">
-            <div class="dashboard-top-bar tenant-theme">
-                <div class="dashboard-user-row">
-                    <div>
-                        <h2 class="dashboard-brand-title">Kaza App</h2>
-                        <p class="dashboard-user-subtitle">Locataire : <strong id="tenant-profile-display">...</strong></p>
-                    </div>
-                    <button class="btn-dark-toggle" onclick="toggleAppTheme()"><i class="fa-solid fa-moon"></i></button>
-                </div>
-                <div class="dashboard-navigation-tabs">
-                    <div id="nav-tab-tenant-discover" class="tab-navigation-item active" onclick="activateTenantTab('discover')"><i class="fa-solid fa-compass"></i><span>Découvrir</span></div>
-                    <div id="nav-tab-tenant-chats" class="tab-navigation-item" onclick="activateTenantTab('chats')"><i class="fa-solid fa-comments"></i><span>Mes Échanges</span></div>
-                </div>
-            </div>
-            <div id="tenant-tab-injector" class="dashboard-content-area"></div>
-        </div>
-
-        <div id="scr-chat-room" class="screen-view">
-            <div class="btn-navigation-back" id="btn-back-from-chat"><i class="fa-solid fa-arrow-left"></i> Quitter le chat</div>
-            <div class="chat-list-item" style="border:none; margin-bottom: 10px; background: transparent; padding: 0;">
-                <div class="chat-avatar" id="chat-room-avatar">?</div>
-                <div class="chat-info">
-                    <h4 id="chat-room-title">Correspondant</h4>
-                    <p id="chat-room-subtitle">Fil de discussion privé Kaza</p>
-                </div>
-            </div>
-            
-            <div class="chat-window-messages" id="chat-messages-container"></div>
-            
-            <div class="chat-input-bar">
-                <input type="text" id="chat-input-field" placeholder="Écrire un message...">
-                <button class="btn-send-msg" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+            <div class="role-interactive-card" onclick="openAuthScreen('tenant')">
+                <div class="role-card-icon tenant"><i class="fa-solid fa-house-user"></i></div>
+                <h3>Espace Locataire</h3>
+                <p>Explorez les logements certifiés, gérez vos quittances mensuelles et restez en lien direct avec votre bailleur.</p>
             </div>
         </div>
+    </div>
 
-    </div> ```
+    <div id="scr-auth" class="screen-view">
+        <div class="dashboard-ui-header">
+            <button class="circle-action-btn" onclick="changeView('scr-role-select')"><i class="fa-solid fa-arrow-left"></i></button>
+        </div>
+        <h2 id="auth-title" style="font-size:24px; font-weight:800; margin-bottom:4px;">Connexion</h2>
+        <p id="auth-subtitle" style="font-size:13px; color:var(--text-muted); margin-bottom:24px;">Entrez vos identifiants.</p>
+        
+        <div class="form-input-container" id="container-auth-name" style="display:none;">
+            <label>Nom complet ou Raison Sociale</label>
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="auth-name" placeholder="Ex: Jean Mukendi">
+        </div>
+        <div class="form-input-container">
+            <label>Adresse e-mail de connexion</label>
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="auth-email" placeholder="Ex: contact@kaza.cd">
+        </div>
+        <div class="form-input-container" id="container-auth-phone" style="display:none;">
+            <label>Numéro de Téléphone (WhatsApp)</label>
+            <i class="fa-solid fa-phone"></i>
+            <input type="tel" id="auth-phone" placeholder="Ex: +243 890 000 000">
+        </div>
+        <div class="form-input-container">
+            <label>Mot de passe</label>
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="auth-password" placeholder="••••••••">
+        </div>
 
----
-Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScript (Routage, Sécurisation anti-doublon d'email, et Initialisation de l'espace Bailleur).
-      <script>
+        <button id="btn-auth-submit" class="btn-submit-form" onclick="submitAuthForm()">Continuer</button>
+        <p style="text-align:center; font-size:12px; margin-top:20px; color:var(--text-muted); font-weight:500; cursor:pointer;" id="auth-toggle-mode-link" onclick="toggleAuthMode()">Pas encore de compte ? S'inscrire</p>
+    </div>
+
+    <div id="scr-owner-dashboard" class="screen-view">
+        <div class="dashboard-ui-header">
+            <div class="profile-greetings">
+                <p>Espace Propriétaire</p>
+                <h2 id="owner-profile-display">Bailleur Kaza</h2>
+            </div>
+            <div class="header-utility-actions">
+                <button class="circle-action-btn" onclick="toggleAppTheme()"><i class="fa-solid fa-moon"></i></button>
+                <button class="circle-action-btn" onclick="changeView('scr-role-select')"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+        </div>
+        <div id="owner-tab-injector"></div>
+        <div class="bottom-navigation-bar">
+            <div class="tab-navigation-item" id="nav-tab-owner-home" onclick="activateOwnerTab('home')"><i class="fa-solid fa-chart-pie"></i>Statistiques</div>
+            <div class="tab-navigation-item" id="nav-tab-owner-apparts" onclick="activateOwnerTab('apparts')"><i class="fa-solid fa-building"></i> Vos Biens</div>
+            <div class="tab-navigation-item" id="nav-tab-owner-chats" onclick="activateOwnerTab('chats')"><i class="fa-solid fa-comments"></i> Messages</div>
+        </div>
+    </div>
+
+    <div id="scr-add-appart" class="screen-view">
+        <div class="dashboard-ui-header">
+            <button class="circle-action-btn" onclick="changeView('scr-owner-dashboard'); activateOwnerTab('apparts');"><i class="fa-solid fa-arrow-left"></i></button>
+            <h3 style="font-size:16px; font-weight:700; margin-left:14px;">Publier un nouveau bien</h3>
+        </div>
+        
+        <div class="form-input-container"><label>Dénomination du Logement</label><i class="fa-solid fa-font"></i><input type="text" id="app-title" placeholder="Ex: Résidence Fleuve Congo - Studio Chic"></div>
+        <div class="form-input-container"><label>Typologie</label><i class="fa-solid fa-house"></i><select id="app-type" onchange="toggleAppartNumberField(this.value)"><option value="Appartement">Appartement</option><option value="Maison">Maison</option><option value="Studio">Studio</option></select></div>
+        <div class="form-input-container"><label>Commune (Kinshasa)</label><i class="fa-solid fa-map-location-dot"></i><select id="app-commune"><option value="Gombe">Gombe</option><option value="Ngaliema">Ngaliema</option><option value="Limete">Limete</option><option value="Kasa-Vubu">Kasa-Vubu</option><option value="Lingwala">Lingwala</option></select></div>
+        <div class="form-input-container"><label>Avenue</label><i class="fa-solid fa-road"></i><input type="text" id="app-avenue" placeholder="Ex: Boulevard du 30 Juin"></div>
+        <div class="form-input-container"><label>Numéro de parcelle / rue</label><i class="fa-solid fa-arrow-up-9-1"></i><input type="text" id="app-street-number" placeholder="Ex: 45"></div>
+        <div class="form-input-container" id="container-app-door"><label>Numéro d'Appartement / Porte (Optionnel)</label><i class="fa-solid fa-door-closed"></i><input type="text" id="app-door" placeholder="Ex: 3B"></div>
+        <div class="form-input-container"><label>Point de Repère / Référence</label><i class="fa-solid fa-compass"></i><input type="text" id="app-reference" placeholder="Ex: Derrière l'immeuble Rawbank"></div>
+        <div class="form-input-container"><label>Prix du Loyer Mensuel ($ USD)</label><i class="fa-solid fa-dollar-sign"></i><input type="number" id="app-price" placeholder="Ex: 450"></div>
+        <div class="form-input-container"><label>Spécifications / Caractéristiques</label><i class="fa-solid fa-list-check"></i><input type="text" id="app-specs" placeholder="Ex: 2 Ch, 1 Salon, Électricité stable, Parking"></div>
+        
+        <div style="background:var(--surface); border:1px solid var(--border); padding:16px; border-radius:16px; margin-bottom:16px;">
+            <p style="font-size:12px; font-weight:700; margin-bottom:10px;"><i class="fa-solid fa-images" style="color:var(--primary)"></i> Galerie d'images du bien (Jusqu'à 4 liens URL)</p>
+            <div class="form-input-container" style="margin-bottom:8px;"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-1" placeholder="Lien URL de la Photo 1 (Obligatoire/Couverture)"></div>
+            <div class="form-input-container" style="margin-bottom:8px;"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-2" placeholder="Lien URL de la Photo 2 (Optionnel)"></div>
+            <div class="form-input-container" style="margin-bottom:8px;"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-3" placeholder="Lien URL de la Photo 3 (Optionnel)"></div>
+            <div class="form-input-container" style="margin-bottom:0;"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-4" placeholder="Lien URL de la Photo 4 (Optionnel)"></div>
+        </div>
+
+        <button class="btn-submit-form owner-theme" onclick="saveNewApartment()" style="margin-bottom: 20px;">Enregistrer le bien</button>
+    </div>
+
+    <div id="scr-tenant-dashboard" class="screen-view tenant-theme">
+        <div class="dashboard-ui-header">
+            <div class="profile-greetings">
+                <p>Espace Locataire</p>
+                <h2 id="tenant-profile-display">Locataire Kaza</h2>
+            </div>
+            <div class="header-utility-actions">
+                <button class="circle-action-btn" onclick="toggleAppTheme()"><i class="fa-solid fa-moon"></i></button>
+                <button class="circle-action-btn" onclick="changeView('scr-role-select')"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+        </div>
+        <div id="tenant-tab-injector"></div>
+        <div class="bottom-navigation-bar">
+            <div class="tab-navigation-item" id="nav-tab-tenant-discover" onclick="activateTenantTab('discover')"><i class="fa-solid fa-house-laptop"></i>Catalogue</div>
+            <div class="tab-navigation-item" id="nav-tab-tenant-chats" onclick="activateTenantTab('chats')"><i class="fa-solid fa-comment-dots"></i>Messages</div>
+        </div>
+    </div>
+
+    <div id="scr-chat-room" class="screen-view">
+        <div class="chat-header-bar">
+            <button class="circle-action-btn" id="btn-back-from-chat"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="chat-avatar" id="chat-room-avatar">-</div>
+            <div>
+                <h4 id="chat-room-title" style="font-size:14px; font-weight:700;">Correspondant</h4>
+                <p id="chat-room-subtitle" style="font-size:11px; color:var(--text-muted);">Objet de discussion</p>
+            </div>
+        </div>
+        <div class="chat-messages-scrollarea" id="chat-messages-container"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input-field" placeholder="Rédiger votre message Kaza...">
+            <button class="btn-send-message" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
         // --- ARCHITECTURE DE DONNÉES & PERSISTANCE (localStorage) ---
         let state = {
             currentRole: '', 
@@ -301,7 +293,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             filterCommune: 'Toutes'
         };
 
-        function saveToStorage() {
+        function saveToStorage() {            
             localStorage.setItem('kaza_apartments', JSON.stringify(state.apartments));
             localStorage.setItem('kaza_chats', JSON.stringify(state.chats));
         }
@@ -310,7 +302,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
         function changeView(screenId) {
             document.querySelectorAll('.screen-view').forEach(view => view.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
-            
+
             if(screenId === 'scr-chat-room') {
                 const btnBack = document.getElementById('btn-back-from-chat');
                 btnBack.onclick = () => {
@@ -328,7 +320,6 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
         // --- AFFICHAGE EXTENSION ADRESSE EN FONCTION DU TYPE ---
         function toggleAppartNumberField(selectedType) {
             const doorField = document.getElementById('container-app-door');
-            // Masquer le champ "Numéro appartement" si c'est une maison complète
             if(selectedType === 'Maison') {
                 doorField.style.display = 'none';
                 document.getElementById('app-door').value = '';
@@ -337,7 +328,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             }
         }
 
-        // --- CONTRÔLE D'ACCÈS ULTRA-SÉCURISÉ ANTI-DOUBLON ---
+        // --- CONTRÔLE D'ACCÈS ULTRA-SÉCURISÉ AVEC FIREBASE ---
         function openAuthScreen(role) {
             state.currentRole = role;
             state.authMode = 'login';
@@ -347,12 +338,12 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             document.getElementById('auth-subtitle').innerText = "Entrez vos accès pour piloter votre espace Kaza.";
             document.getElementById('btn-auth-submit').className = "btn-submit-form " + (role === 'owner' ? "owner-theme" : "tenant-theme");
             document.getElementById('auth-toggle-mode-link').innerText = "Pas encore de compte ? S'inscrire";
-            
+
             // Remplissages de test rapides
             document.getElementById('auth-name').value = role === 'owner' ? "Advice Basinsa" : "Patient Mwamba";
             document.getElementById('auth-email').value = role === 'owner' ? "advice@kaza.cd" : "patient@gmail.com";
             document.getElementById('auth-password').value = "123456";
-            
+
             changeView('scr-auth');
         }
 
@@ -372,23 +363,42 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             }
         }
 
-        function submitAuthForm() {
+        async function submitAuthForm() {
             const name = document.getElementById('auth-name').value;
             const email = document.getElementById('auth-email').value.trim().toLowerCase();
             const phone = document.getElementById('auth-phone').value;
-            
+
             if(!email) { alert("Veuillez saisir votre adresse email."); return; }
-            
+
+            // IMPORTATION DYNAMIQUE FIREBASE POUR LA VÉRIFICATION
+            if (window.db) {
+                try {
+                    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js");
+                    
+                    // COUCHE DE SÉCURITÉ CRITIQUE : Vérification de l'autorisation du locataire dans Firebase
+                    if(state.authMode === 'register' && state.currentRole === 'tenant') {
+                        const docRef = doc(window.db, "autorisations", email);
+                        const docSnap = await getDoc(docRef);
+                        
+                        if (!docSnap.exists()) {
+                            alert("🛑 Accès refusé : Votre adresse email n'est pas encore enregistrée ou autorisée par votre bailleur sur Kaza.");
+                            return; // Bloque instantanément la création de compte
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erreur lors de la vérification Firebase : ", e);
+                }
+            }
+
             let usersDb = JSON.parse(localStorage.getItem('kaza_users_db')) || [];
-            
+
             if(state.authMode === 'register') {
-                // BLOCAGE CRITIQUE : Interdire de créer un compte si l'email existe
                 let emailExists = usersDb.some(u => u.email === email);
                 if(emailExists) {
                     alert("⚠️ Impossible de continuer : Cette adresse email est déjà connectée ou enregistrée sur Kaza !");
                     return;
                 }
-                
+
                 let newUser = { name, email, phone: phone || "+243 890 000 000", role: state.currentRole };
                 usersDb.push(newUser);
                 localStorage.setItem('kaza_users_db', JSON.stringify(usersDb));
@@ -402,9 +412,9 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                     role: state.currentRole
                 };
             }
-            
+
             localStorage.setItem('kaza_user', JSON.stringify(state.currentUser));
-            
+
             if(state.currentRole === 'owner') {
                 document.getElementById('owner-profile-display').innerText = state.currentUser.name;
                 changeView('scr-owner-dashboard');
@@ -415,17 +425,16 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                 activateTenantTab('discover');
             }
         }
-
-        // --- INTERFACE DE GESTION BAILLEUR (STATISTIQUES & ENREGISTREMENTS) ---
+        // --- INTERFACE DE GESTION BAILLEUR (STATISTIQUES, ENREGISTREMENTS & SUPPRESSION) ---
         function activateOwnerTab(tabName) {
             document.querySelectorAll('#scr-owner-dashboard .tab-navigation-item').forEach(t => t.classList.remove('active'));
             const container = document.getElementById('owner-tab-injector');
-            
+
             const myApparts = state.apartments.filter(a => a.ownerEmail === state.currentUser.email); 
-            
+
             if(tabName === 'home') {
                 document.getElementById('nav-tab-owner-home').classList.add('active');
-                
+
                 let pendingPaymentsHtml = "";
                 myApparts.forEach(ap => {
                     if(ap.paymentStatus === 'Payé') {
@@ -442,16 +451,25 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                         <div class="stats-kpi-card blue-indicator"><div class="stats-kpi-header"><i class="fa-solid fa-building"></i> Vos Biens</div><div class="stats-kpi-number">${myApparts.length}</div></div>
                         <div class="stats-kpi-card green-indicator"><div class="stats-kpi-header"><i class="fa-solid fa-user-check"></i> Actifs</div><div class="stats-kpi-number">${myApparts.filter(a => a.status === 'Occupé').length}</div></div>
                     </div>
-                    <div style="background:var(--surface); padding:16px; border-radius:16px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                    <div style="background:var(--surface); padding:16px; border-radius:16px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                         <div><h4 style="font-size:14px;">Revenus Estimés</h4><p style="font-size:11px; color:var(--text-muted);">Cumul de vos loyers</p></div>
                         <strong style="font-size:20px; color:var(--secondary);">${myApparts.reduce((acc, curr) => acc + parseInt(curr.price || 0), 0)} $</strong>
+                    </div>
+                    
+                    <div style="background: var(--surface); padding: 18px; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+                        <h4 style="font-size: 14px; margin-bottom: 6px;"><i class="fa-solid fa-user-shield" style="color:var(--primary)"></i> Autoriser un locataire</h4>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Inscrivez l'email de votre locataire pour lui permettre de se connecter à Kaza.</p>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="email" id="securite-locataire-email" placeholder="Ex: locataire@gmail.com" style="flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:13px; outline:none;">
+                            <button class="btn-action-trigger" onclick="enregistrerLocataireFirebase()"><i class="fa-solid fa-plus"></i></button>
+                        </div>
                     </div>
                     ${pendingPaymentsHtml}
                 `;
             } else if(tabName === 'apparts') {
                 document.getElementById('nav-tab-owner-apparts').classList.add('active');
                 let html = `<div class="action-context-bar"><span class="context-title">Vos Annonces</span><button class="btn-action-trigger" onclick="changeView('scr-add-appart')"><i class="fa-solid fa-plus"></i> Ajouter</button></div>`;
-                
+
                 if(myApparts.length === 0) {
                     html += `<div class="blank-slate"><i class="fa-solid fa-folder-open"></i>Aucun bien publié.</div>`;
                 } else {
@@ -459,12 +477,24 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                         let fullAddressString = `Av. ${item.avenue}, N° ${item.streetNumber}`;
                         if(item.door) { fullAddressString += `, Apt/Porte ${item.door}`; }
 
+                        let mainPhoto = (Array.isArray(item.images) && item.images[0]) ? item.images[0] : (item.image || '');
+                        
+                        let miniaturesHtml = "";
+                        if (Array.isArray(item.images) && item.images.length > 0) {
+                            miniaturesHtml = `<div class="gallery-miniatures">`;
+                            item.images.forEach((imgUrl, idx) => {
+                                if(imgUrl) miniaturesHtml += `<img src="${imgUrl}" onclick="event.stopPropagation(); document.getElementById('cover-${item.id}').src='${imgUrl}'">`;
+                            });
+                            miniaturesHtml += `</div>`;
+                        }
+
                         html += `
                             <div class="apartment-card-ui">
                                 <div class="apartment-card-image-placeholder">
-                                    ${item.image ? `<img src="${item.image}">` : `<i class="fa-solid fa-image"></i>`}
+                                    ${mainPhoto ? `<img id="cover-${item.id}" src="${mainPhoto}">` : `<i class="fa-solid fa-image"></i>`}
                                     <span class="apartment-card-badge" style="background:${item.status === 'Occupé' ? '#e74c3c' : 'var(--primary)'}">${item.status || 'Disponible'}</span>
                                 </div>
+                                ${miniaturesHtml}
                                 <div class="apartment-card-details">
                                     <span class="apartment-card-location">${item.commune}, Kinshasa</span>
                                     <h4 class="apartment-card-title">${item.title} (${item.type})</h4>
@@ -473,6 +503,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                                         <span class="apartment-card-price">${item.price} $ <small>/mois</small></span>
                                         <span style="font-size:12px; color:var(--text-muted); font-weight:600;">${item.specs}</span>
                                     </div>
+                                    <button class="btn-action-trigger" style="background:#e74c3c; width:100%; margin-top:14px; border-radius:10px; padding:10px;" onclick="supprimerApartmentFirebase('${item.id}', event)"><i class="fa-solid fa-trash-can"></i> Supprimer ce bien définitivement</button>
                                 </div>
                             </div>`;
                     });
@@ -484,20 +515,54 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             }
         }
 
-        // --- ENREGISTREMENT EN BASE DU BIEN AVEC L'ADRESSE DESCRIPTIVE ---
-        let tempImageBase64 = "";
-        function previewImage(event) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                const preview = document.getElementById('preview-img-container');
-                preview.src = reader.result;
-                preview.style.display = 'block';
-                tempImageBase64 = reader.result;
+        // --- ENVOI DIRECT DE L'AUTORISATION LOCATAIRE VERS FIREBASE ---
+        async function enregistrerLocataireFirebase() {
+            const emailInput = document.getElementById('securite-locataire-email');
+            const email = emailInput.value.trim().toLowerCase();
+
+            if(!email) { alert("Veuillez saisir un email valide."); return; }
+
+            if(window.db) {
+                try {
+                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js");
+                    await setDoc(doc(window.db, "autorisations", email), {
+                        autorisePar: state.currentUser.email,
+                        dateAjout: new Date().toISOString()
+                    });
+                    alert(`✅ Succès : Le locataire [ ${email} ] a été enregistré dans votre base Firebase. Il peut désormais s'inscrire.`);
+                    emailInput.value = "";
+                } catch(e) {
+                    alert("Erreur Firebase lors de l'enregistrement.");
+                    console.error(e);
+                }
+            } else {
+                alert("Firebase non initialisé localement. Simulation réussie.");
+                emailInput.value = "";
             }
-            if(event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
         }
 
-        function saveNewApartment() {
+        // --- SUPPRESSION DIRECTE DU BIEN SUR FIREBASE ---
+        async function supprimerApartmentFirebase(appId, event) {
+            event.stopPropagation();
+            if(!confirm("⚠️ Êtes-vous sûr de vouloir retirer et supprimer ce logement de Firebase ? Cette action est irréversible.")) return;
+
+            if(window.db) {
+                try {
+                    const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js");
+                    await deleteDoc(doc(window.db, "apartments", appId));
+                } catch(e) {
+                    console.error("Erreur de suppression Firebase : ", e);
+                }
+            }
+
+            state.apartments = state.apartments.filter(a => a.id !== appId);
+            saveToStorage();
+            activateOwnerTab('apparts');
+            alert("Le bien a été retiré avec succès.");
+        }
+
+        // --- ENREGISTREMENT MULTI-PHOTOS (4 LIENS) DANS FIREBASE ---
+        async function saveNewApartment() {
             const title = document.getElementById('app-title').value;
             const type = document.getElementById('app-type').value;
             const commune = document.getElementById('app-commune').value;
@@ -508,34 +573,36 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             const price = document.getElementById('app-price').value;
             const specs = document.getElementById('app-specs').value;
 
-            if(!title || !price || !avenue || !streetNumber || !reference) { 
-                alert("Merci de remplir tous les détails obligatoires (Titre, Avenue, N°, Référence et Prix)."); 
+            const photo1 = document.getElementById('app-photo-1').value.trim();
+            const photo2 = document.getElementById('app-photo-2').value.trim();
+            const photo3 = document.getElementById('app-photo-3').value.trim();
+            const photo4 = document.getElementById('app-photo-4').value.trim();
+
+            if(!title || !price || !avenue || !streetNumber || !reference || !photo1) { 
+                alert("Merci de remplir tous les détails obligatoires (Titre, Avenue, N°, Référence, Prix et au moins la Photo 1)."); 
                 return; 
             }
 
-            state.apartments.push({
-                id: 'app_' + Date.now(),
-                title: title,
-                type: type,
-                commune: commune,
-                avenue: avenue,
-                streetNumber: streetNumber,
-                door: door || null,
-                reference: reference,
-                price: price,
-                specs: specs || "Non spécifié",
-                image: tempImageBase64,
-                status: 'Disponible',
-                ownerName: state.currentUser.name,
-                ownerEmail: state.currentUser.email,
-                tenantEmail: null,
-                tenantName: null,
-                paymentStatus: null
-            });
+            const imagesArray = [photo1, photo2, photo3, photo4].filter(url => url !== "");
+            const newId = 'app_' + Date.now();
 
+            const appartObject = {
+                id: newId, title: title, type: type, commune: commune, avenue: avenue, streetNumber: streetNumber, door: door || null, reference: reference, price: price, specs: specs || "Non spécifié",
+                image: photo1, images: imagesArray, status: 'Disponible', ownerName: state.currentUser.name, ownerEmail: state.currentUser.email, tenantEmail: null, tenantName: null, paymentStatus: null
+            };
+
+            if(window.db) {
+                try {
+                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js");
+                    await setDoc(doc(window.db, "apartments", newId), appartObject);
+                } catch(e) {
+                    console.error("Erreur d'écriture Firebase : ", e);
+                }
+            }
+
+            state.apartments.push(appartObject);
             saveToStorage();
-            
-            // Remise à zéro
+
             document.getElementById('app-title').value = "";
             document.getElementById('app-avenue').value = "";
             document.getElementById('app-street-number').value = "";
@@ -543,20 +610,23 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             document.getElementById('app-reference').value = "";
             document.getElementById('app-price').value = "";
             document.getElementById('app-specs').value = "";
-            document.getElementById('preview-img-container').style.display = 'none';
-            tempImageBase64 = "";
+            document.getElementById('app-photo-1').value = "";
+            document.getElementById('app-photo-2').value = "";
+            document.getElementById('app-photo-3').value = "";
+            document.getElementById('app-photo-4').value = "";
 
             changeView('scr-owner-dashboard');
             activateOwnerTab('apparts');
         }
-                // --- FRONTEND LOCATAIRE (EXPLORATION & RECHERCHE AVEC ADRESSE STRUCTURÉE) ---
+
+        // --- FRONTEND LOCATAIRE (EXPLORATION, RECHERCHE & GALERIE PHOTOS MULTIPLES) ---
         function activateTenantTab(tabName) {
             document.querySelectorAll('#scr-tenant-dashboard .tab-navigation-item').forEach(t => t.classList.remove('active'));
             const container = document.getElementById('tenant-tab-injector');
-            
+
             if(tabName === 'discover') {
                 document.getElementById('nav-tab-tenant-discover').classList.add('active');
-                
+
                 container.innerHTML = `
                     <div class="search-filter-box">
                         <div class="form-input-container" style="margin-bottom:0;">
@@ -609,7 +679,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             filtered.forEach(item => {
                 let isMyLease = item.tenantEmail === state.currentUser.email;
                 let isOccupied = item.status === 'Occupé';
-                
+
                 let actionButton = "";
                 let paymentButton = "";
 
@@ -617,7 +687,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                     actionButton = `<button class="btn-action-trigger" style="background:var(--secondary-gradient);" onclick="rentApartment('${item.id}', event)"><i class="fa-solid fa-key"></i> Louer la résidence</button>`;
                 } else if (isMyLease) {
                     actionButton = `<button class="btn-action-trigger" style="background:#e74c3c;" onclick="leaveApartment('${item.id}', event)"><i class="fa-solid fa-door-open"></i> Partir de la résidence</button>`;
-                    
+
                     if (item.paymentStatus === 'Payé') {
                         paymentButton = `<span style="color:var(--secondary); font-size:11px; font-weight:700;"><i class="fa-solid fa-circle-check"></i> Paiement Transmis</span>`;
                     } else if (item.paymentStatus === 'Confirmé') {
@@ -629,28 +699,31 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                     actionButton = `<span class="apartment-card-badge" style="background:#94a3b8; position:static;">Occupé</span>`;
                 }
 
-                // Construction de la chaîne d'adresse détaillée
                 let fullAddressString = `Av. ${item.avenue}, N° ${item.streetNumber}`;
                 if(item.door) { fullAddressString += `, Apt/Porte ${item.door}`; }
+
+                let mainPhoto = (Array.isArray(item.images) && item.images[0]) ? item.images[0] : (item.image || '');
+                
+                let miniaturesHtml = "";
+                if (Array.isArray(item.images) && item.images.length > 0) {
+                    miniaturesHtml = `<div class="gallery-miniatures">`;
+                    item.images.forEach((imgUrl) => {
+                        if(imgUrl) miniaturesHtml += `<img src="${imgUrl}" onclick="event.stopPropagation(); document.getElementById('tenant-cover-${item.id}').src='${imgUrl}'">`;
+                    });
+                    miniaturesHtml += `</div>`;
+                }
 
                 html += `
                     <div class="apartment-card-ui" onclick="startPrivateChat('${item.ownerEmail}', '${item.ownerName}', '${item.title}')">
                         <div class="apartment-card-image-placeholder">
-                            ${item.image ? `<img src="${item.image}">` : `<i class="fa-solid fa-image"></i>`}
+                            ${mainPhoto ? `<img id="tenant-cover-${item.id}" src="${mainPhoto}">` : `<i class="fa-solid fa-image"></i>`}
                             <span class="apartment-card-badge" style="background:${isOccupied ? '#e74c3c' : 'var(--primary)'}">${item.status || 'Disponible'}</span>
                         </div>
-                        <div class="apartment-card-details">
-                            <span class="apartment-card-location">${item.commune}, Kinshasa • Par ${item.ownerName}</span>
+                        ${miniaturesHtml}
+                        <div class="apartment-card-details">                            <span class="apartment-card-location">${item.commune}, Kinshasa • Par ${item.ownerName}</span>
                             <h4 class="apartment-card-title">${item.title}</h4>
-                            
-                            <p class="apartment-card-address-detail" style="margin: 6px 0;">
-                                <i class="fa-solid fa-location-dot" style="color:var(--primary)"></i> <strong>${fullAddressString}</strong><br>
-                                <small style="color:var(--text-muted); font-style:italic;">Réf: ${item.reference}</small>
-                            </p>
-
-                            <div style="margin-top: 8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                ${actionButton} ${paymentButton}
-                            </div>
+                            <p class="apartment-card-address-detail" style="margin: 6px 0;"><i class="fa-solid fa-location-dot" style="color:var(--primary)"></i> <strong>${fullAddressString}</strong><br><small style="color:var(--text-muted); font-style:italic;">Réf: ${item.reference}</small></p>
+                            <div style="margin-top: 8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">${actionButton} ${paymentButton}</div>
                             <div class="apartment-card-pricing-row">
                                 <span class="apartment-card-price">${item.price} $ <small>/mois</small></span>
                                 <span style="color:var(--primary); font-weight:700; font-size:13px;"><i class="fa-solid fa-comments"></i> Chat Privé</span>
@@ -661,7 +734,6 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             resultsBox.innerHTML = html;
         }
 
-        // --- ENVOI DES NOTIFICATIONS AUTOMATIQUES ET LOGIQUE MÉTIER ---
         function rentApartment(appId, event) {
             event.stopPropagation();
             let app = state.apartments.find(a => a.id === appId);
@@ -674,7 +746,7 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
 
             let chatId = state.currentUser.email + "_" + app.ownerEmail;
             let existingChat = state.chats.find(c => c.id === chatId);
-            
+
             let alertMsg = {
                 sender: 'system',
                 text: `🚨 NOTIFICATION : Le locataire ${state.currentUser.name} (${state.currentUser.phone || 'Pas de numéro'}) demande à louer votre résidence : ${app.title}.`,
@@ -682,155 +754,87 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
             };
 
             if(!existingChat) {
-                state.chats.push({
-                    id: chatId, tenantEmail: state.currentUser.email, tenantName: state.currentUser.name,
-                    ownerEmail: app.ownerEmail, ownerName: app.ownerName, context: app.title, messages: [alertMsg]
-                });
+                state.chats.push({ id: chatId, tenantEmail: state.currentUser.email, tenantName: state.currentUser.name, ownerEmail: app.ownerEmail, ownerName: app.ownerName, context: app.title, messages: [alertMsg] });
             } else {
                 existingChat.messages.push(alertMsg);
             }
 
-            saveToStorage();
-            renderFilteredCatalog();
-            alert("Votre demande de location a été transmise au propriétaire avec votre numéro de téléphone.");
+            saveToStorage(); renderFilteredCatalog(); alert("Votre demande de location a été transmise au propriétaire avec votre numéro de téléphone.");
         }
 
         function leaveApartment(appId, event) {
-            event.stopPropagation();
-            if(!confirm("Signaler votre départ de ce logement ?")) return;
-
-            let app = state.apartments.find(a => a.id === appId);
-            if(!app) return;
+            event.stopPropagation(); if(!confirm("Signaler votre départ de ce logement ?")) return;
+            let app = state.apartments.find(a => a.id === appId); if(!app) return;
 
             let oldTenantName = app.tenantName;
-            app.status = 'Disponible';
-            app.tenantEmail = null;
-            app.tenantName = null;
-            app.paymentStatus = null;
+            app.status = 'Disponible'; app.tenantEmail = null; app.tenantName = null; app.paymentStatus = null;
 
             let chatId = state.currentUser.email + "_" + app.ownerEmail;
             let chat = state.chats.find(c => c.id === chatId);
-            if(chat) {
-                chat.messages.push({
-                    sender: 'system',
-                    text: `📭 NOTIFICATION DE DEPART : Le locataire ${oldTenantName} a libéré votre résidence : ${app.title}.`,
-                    time: 'À l\'instant'
-                });
-            }
+            if(chat) { chat.messages.push({ sender: 'system', text: `📭 NOTIFICATION DE DEPART : Le locataire ${oldTenantName} a libéré votre résidence : ${app.title}.`, time: 'À l\'instant' }); }
 
-            saveToStorage();
-            renderFilteredCatalog();
-            alert("Notification de départ envoyée avec succès.");
+            saveToStorage(); renderFilteredCatalog(); alert("Notification de départ envoyée avec succès.");
         }
 
         function notifyPayment(appId, event) {
             event.stopPropagation();
-            let app = state.apartments.find(a => a.id === appId);
-            if(!app) return;
-
+            let app = state.apartments.find(a => a.id === appId); if(!app) return;
             app.paymentStatus = 'Payé';
 
             let chatId = state.currentUser.email + "_" + app.ownerEmail;
             let chat = state.chats.find(c => c.id === chatId);
-            if(chat) {
-                chat.messages.push({
-                    sender: 'system',
-                    text: `💰 LOGISTIQUE PAIEMENT : Le locataire ${state.currentUser.name} signale avoir réglé le loyer de ${app.price} $.`,
-                    time: 'À l\'instant'
-                });
-            }
+            if(chat) { chat.messages.push({ sender: 'system', text: `💰 LOGISTIQUE PAIEMENT : Le locataire ${state.currentUser.name} signale avoir réglé le loyer de ${app.price} $.`, time: 'À l\'instant' }); }
 
-            saveToStorage();
-            renderFilteredCatalog();
-            alert("Paiement signalé au bailleur.");
+            saveToStorage(); renderFilteredCatalog(); alert("Paiement signalé au bailleur.");
         }
 
         function confirmTenantPayment(appId) {
-            let app = state.apartments.find(a => a.id === appId);
-            if(!app) return;
-
+            let app = state.apartments.find(a => a.id === appId); if(!app) return;
             app.paymentStatus = 'Confirmé';
 
             let chatId = app.tenantEmail + "_" + state.currentUser.email;
             let chat = state.chats.find(c => c.id === chatId);
-            if(chat) {
-                chat.messages.push({
-                    sender: 'system',
-                    text: `✅ PAIEMENT APPROUVÉ : Le propriétaire a validé la réception de votre loyer pour ce mois.`,
-                    time: 'À l\'instant'
-                });
-            }
+            if(chat) { chat.messages.push({ sender: 'system', text: `✅ PAIEMENT APPROUVÉ : Le propriétaire a validé la réception de votre loyer pour ce mois.`, time: 'À l\'instant' }); }
 
-            saveToStorage();
-            activateOwnerTab('home');
-            alert("Le paiement a été validé. Reçu transmis au locataire.");
+            saveToStorage(); activateOwnerTab('home'); alert("Le paiement a été validé. Reçu transmis au locataire.");
         }
 
-        // --- SYSTÈME DE MESSAGERIE ET CHAT ROOM ---
         function startPrivateChat(ownerEmail, ownerName, appartTitle) {
             let chatId = state.currentUser.email + "_" + ownerEmail;
             let existingChat = state.chats.find(c => c.id === chatId);
             if(!existingChat) {
-                state.chats.push({
-                    id: chatId, tenantEmail: state.currentUser.email, tenantName: state.currentUser.name,
-                    ownerEmail: ownerEmail, ownerName: ownerName, context: appartTitle,
-                    messages: [{ sender: 'system', text: `Discussion initiée pour le bien : ${appartTitle}`, time: 'Maintenant' }]
-                });
+                state.chats.push({ id: chatId, tenantEmail: state.currentUser.email, tenantName: state.currentUser.name, ownerEmail: ownerEmail, ownerName: ownerName, context: appartTitle, messages: [{ sender: 'system', text: `Discussion initiée pour le bien : ${appartTitle}`, time: 'Maintenant' }] });
                 saveToStorage();
             }
             openChatRoom(chatId);
         }
 
         function renderChatList(targetContainer) {
-            let myChats = state.chats.filter(c => {
-                return state.currentRole === 'owner' ? c.ownerEmail === state.currentUser.email : c.tenantEmail === state.currentUser.email;
-            });
-
-            if(myChats.length === 0) {
-                targetContainer.innerHTML = `<div class="blank-slate"><i class="fa-solid fa-comments"></i>Aucune conversation.</div>`;
-                return;
-            }
+            let myChats = state.chats.filter(c => { return state.currentRole === 'owner' ? c.ownerEmail === state.currentUser.email : c.tenantEmail === state.currentUser.email; });
+            if(myChats.length === 0) { targetContainer.innerHTML = `<div class="blank-slate"><i class="fa-solid fa-comments"></i>Aucune conversation.</div>`; return; }
 
             let html = `<div class="action-context-bar"><span class="context-title">Vos Conversations</span></div>`;
             myChats.forEach(c => {
                 let correspondent = state.currentRole === 'owner' ? c.tenantName : c.ownerName;
                 let lastMsg = c.messages[c.messages.length - 1]?.text || "Aucun message";
-                
-                html += `
-                    <div class="chat-list-item" onclick="openChatRoom('${c.id}')">
-                        <div class="chat-avatar">${correspondent.charAt(0)}</div>
-                        <div class="chat-info">
-                            <h4>${correspondent}</h4>
-                            <p style="color:var(--primary); font-size:11px; font-weight:700;">Objet: ${c.context}</p>
-                            <p>${lastMsg}</p>
-                        </div>
-                        <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:12px;"></i>
-                    </div>`;
+                html += `<div class="chat-list-item" onclick="openChatRoom('${c.id}')"><div class="chat-avatar">${correspondent.charAt(0)}</div><div class="chat-info"><h4>${correspondent}</h4><p style="color:var(--primary); font-size:11px; font-weight:700;">Objet: ${c.context}</p><p>${lastMsg}</p></div><i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:12px;"></i></div>`;
             });
             targetContainer.innerHTML = html;
         }
 
         function openChatRoom(chatId) {
-            state.activeChatId = chatId;
-            let chat = state.chats.find(c => c.id === chatId);
-            if(!chat) return;
-
+            state.activeChatId = chatId; let chat = state.chats.find(c => c.id === chatId); if(!chat) return;
             let correspondent = state.currentRole === 'owner' ? chat.tenantName : chat.ownerName;
             document.getElementById('chat-room-avatar').innerText = correspondent.charAt(0);
             document.getElementById('chat-room-title').innerText = correspondent;
             document.getElementById('chat-room-subtitle').innerText = "Bien ciblé : " + chat.context;
-
             document.getElementById('scr-chat-room').className = state.currentRole === 'tenant' ? "screen-view tenant-theme" : "screen-view";
-
-            renderMessages();
-            changeView('scr-chat-room');
+            renderMessages(); changeView('scr-chat-room');
         }
 
         function renderMessages() {
-            const container = document.getElementById('chat-messages-container');
-            container.innerHTML = "";
-            let chat = state.chats.find(c => c.id === state.activeChatId);
-            if(!chat) return;
+            const container = document.getElementById('chat-messages-container'); container.innerHTML = "";
+            let chat = state.chats.find(c => c.id === state.activeChatId); if(!chat) return;
 
             chat.messages.forEach((m) => {
                 if(m.sender === 'system') {
@@ -838,77 +842,63 @@ Dis-moi **"4"** ou **"Suite"** pour charger la première moitié du bloc JavaScr
                 } else {
                     let isMyMsg = m.sender === state.currentUser.email;
                     let transferAction = (state.currentRole === 'owner' && !isMyMsg) ? `onclick="triggerWhatsAppBroadcast('${m.text.replace(/'/g, "\\'")}')"` : '';
-
-                    container.innerHTML += `
-                        <div class="msg-bubble ${isMyMsg ? 'outgoing' : 'incoming'}" ${transferAction}>
-                            ${m.text}
-                            ${state.currentRole === 'owner' && !isMyMsg ? `<span style="display:block; font-size:9px; color:var(--primary); margin-top:5px; font-weight:700;"><i class="fa-solid fa-share-nodes"></i> Diffuser (Style WhatsApp)</span>` : ''}
-                            <span class="msg-meta">${m.time}</span>
-                        </div>`;
+                    container.innerHTML += `<div class="msg-bubble ${isMyMsg ? 'outgoing' : 'incoming'}" ${transferAction}>${m.text}${state.currentRole === 'owner' && !isMyMsg ? `<span style="display:block; font-size:9px; color:var(--primary); margin-top:5px; font-weight:700;"><i class="fa-solid fa-share-nodes"></i> Diffuser (Style WhatsApp)</span>` : ''}<span class="msg-meta">${m.time}</span></div>`;
                 }
             });
             container.scrollTop = container.scrollHeight;
         }
 
         function sendMessage() {
-            const input = document.getElementById('chat-input-field');
-            if(!input.value.trim()) return;
-
-            let chat = state.chats.find(c => c.id === state.activeChatId);
-            if(!chat) return;
-
+            const input = document.getElementById('chat-input-field'); if(!input.value.trim()) return;
+            let chat = state.chats.find(c => c.id === state.activeChatId); if(!chat) return;
             chat.messages.push({ sender: state.currentUser.email, text: input.value, time: '12:46' });
-            input.value = "";
-            saveToStorage();
-            renderMessages();
+            input.value = ""; saveToStorage(); renderMessages();
         }
 
         function triggerWhatsAppBroadcast(messageText) {
-            let confirmation = confirm(`Voulez-vous transférer ce message à la totalité de vos locataires ?\n\n"${messageText}"`);
-            if(!confirmation) return;
-
+            let confirmation = confirm(`Voulez-vous transférer ce message à la totalité de vos locataires ?\n\n"${messageText}"`); if(!confirmation) return;
             let broadcastCount = 0;
             state.chats.forEach(c => {
-                if(c.ownerEmail === state.currentUser.email) {
-                    c.messages.push({ sender: state.currentUser.email, text: `[Diffusion Groupée] : ${messageText}`, time: 'À l\'instant' });
-                    broadcastCount++;
-                }
+                if(c.ownerEmail === state.currentUser.email) { c.messages.push({ sender: state.currentUser.email, text: `[Diffusion Groupée] : ${messageText}`, time: 'À l\'instant' }); broadcastCount++; }
             });
-
-            saveToStorage();
-            renderMessages();
-            alert(`Message transféré avec succès dans vos ${broadcastCount} canaux.`);
+            saveToStorage(); renderMessages(); alert(`Message transféré avec succès dans vos ${broadcastCount} canaux.`);
         }
 
         function toggleAppTheme() { document.body.classList.toggle('dark-mode'); }
+
+        // --- PWA LOGIQUE MOBILE ---
+        let pwaPrompt; const pwaBtn = document.getElementById('pwa-install-btn'); const checkIsIos = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        window.addEventListener('load', () => { if (checkIsIos() && pwaBtn) { pwaBtn.style.display = 'block'; } });
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); pwaPrompt = e; if (pwaBtn) pwaBtn.style.display = 'block'; });
+        if (pwaBtn) {
+            pwaBtn.addEventListener('click', async () => {
+                if (checkIsIos()) { alert("Pour installer Kaza sur iPhone :\n\n1. Cliquez sur le bouton 'Partager' en bas sur Safari.\n2. Sélectionnez 'Sur l'écran d'accueil'."); }
+                else if (pwaPrompt) { pwaPrompt.prompt(); const { outcome } = await pwaPrompt.userChoice; if (outcome === 'accepted') pwaBtn.style.display = 'none'; pwaPrompt = null; }
+            });
+        }
     </script>
+
 <script type="module">
-  // Importation des modules Firebase nécessaires
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
   import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
   import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 
-  // Ta configuration Firebase personnelle
   const firebaseConfig = {
     apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
     authDomain: "kaza-bf0dc.firebaseapp.com",
     projectId: "kaza-bf0dc",
     storageBucket: "kaza-bf0dc.firebasestorage.app",
     messagingSenderId: "785266371417",
-    appId: "1:785266371417:web:9dc8df1cfef4e12ec63a48",
+    appId: "1:785266371417:web:9dc8df1cfef4e12ec63a48",    
     measurementId: "G-MTDDTVT839"
   };
 
-  // Initialisation de Firebase
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
-  // Rendre les variables accessibles partout dans ton code Kaza
-  window.db = db;
-  window.auth = auth;
-  
+  window.db = getFirestore(app);
+  window.auth = getAuth(app);
   console.log("Kaza est connecté à Firebase avec succès !");
 </script>
 </body>
 </html>
+
+        
