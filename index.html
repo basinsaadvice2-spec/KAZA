@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaza — Pilotez votre immobilier</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --input-bg: #f1f5f9;
+  --primary: #4f46e5;
+  --primary-gradient: linear-gradient(135deg, #4f46e5, #6366f1);
+  --secondary: #10b981;
+  --secondary-gradient: linear-gradient(135deg, #10b981, #059669);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md: 0 8px 24px rgba(15,23,42,0.08);
+}
+.dark-mode {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --input-bg: #1e293b;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color:transparent; }
+body { background:var(--background); color:var(--text-main); transition: background 0.3s; padding-bottom: 80px; }
+
+.screen-view { display:none; max-width: 480px; margin: 0 auto; padding: 20px; animation: fadeIn 0.3s ease-out; }
+.screen-view.active { display:block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+.role-selection-layout { display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:85vh; text-align:center; }
+.app-brand-logo { font-size:36px; font-weight:800; background:var(--primary-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:10px; letter-spacing:-1px; }
+.app-brand-tagline { font-size:14px; color:var(--text-muted); margin-bottom:40px; font-weight:500; }
+.role-interactive-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:24px; width:100%; margin-bottom:20px; text-align:left; cursor:pointer; transition:all 0.2s ease; box-shadow:var(--shadow-sm); }
+.role-interactive-card:active { transform:scale(0.98); box-shadow:var(--shadow-md); }
+.role-card-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:16px; color:#fff; }
+.role-card-icon.owner { background:var(--primary-gradient); }
+.role-card-icon.tenant { background:var(--secondary-gradient); }
+.role-interactive-card h3 { font-size:18px; font-weight:700; margin-bottom:6px; }
+.role-interactive-card p { font-size:13px; color:var(--text-muted); line-height:1.5; }
+
+.dashboard-ui-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; margin-top:10px; width:100%; }
+.profile-greetings h2 { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+.profile-greetings p { font-size:12px; color:var(--text-muted); margin-top:2px; }
+.header-utility-actions { display:flex; gap:10px; margin-left: auto; }
+.circle-action-btn { width:40px; height:40px; border-radius:50%; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:16px; cursor:pointer; }
+
+.auth-title { font-size:24px; font-weight:800; margin-bottom:4px; }
+.auth-subtitle { font-size:13px; color:var(--text-muted); margin-bottom:24px; }
+.auth-toggle-link { text-align:center; font-size:12px; margin-top:20px; color:var(--text-muted); font-weight:500; cursor:pointer; }
+.add-appart-title { font-size:16px; font-weight:700; margin-left:14px; }
+.chat-room-title { font-size:14px; font-weight:700; }
+.chat-room-subtitle { font-size:11px; color:var(--text-muted); }
+
+.stats-grid-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+.stats-kpi-card { background:var(--surface); border:1px solid var(--border); padding:16px; border-radius:20px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
+.stats-kpi-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; }
+.stats-kpi-card.blue-indicator::before { background:var(--primary); }
+.stats-kpi-card.green-indicator::before { background:var(--secondary); }
+.stats-kpi-header { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.stats-kpi-number { font-size:24px; font-weight:800; color:var(--text-main); }
+.revenue-box { background:var(--surface); padding:16px; border-radius:16px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; }
+.revenue-box h4 { font-size:14px; }
+.revenue-box p { font-size:11px; color:var(--text-muted); }
+.revenue-box strong { font-size:20px; color:var(--secondary); }
+
+.surface-box { background: var(--surface); padding: 18px; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+.surface-box h4 { font-size: 14px; margin-bottom: 6px; }
+.muted-text { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+.muted-strong { font-size:12px; color:var(--text-muted); font-weight:600; }
+.inline-form-row { display: flex; gap: 8px; align-items:center; margin-top:8px; }
+.inline-form-row input { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:13px; outline:none; }
+.inline-form-row span { flex:1; font-size:13px; font-weight:600; }
+
+.pending-payment-box { background:#fff3cd; border:1px solid #ffeeba; padding:14px; border-radius:14px; margin-top:14px; margin-bottom: 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.pending-payment-box span { font-size:12px; color:#856404; line-height:1.4; }
+.confirm-btn { background:var(--secondary-gradient); padding:6px 12px; font-size:11px; flex-shrink:0; }
+
+.apartment-card-ui { background:var(--surface); border:1px solid var(--border); border-radius:24px; overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow-sm); cursor:default; }
+.apartment-card-image-placeholder { width:100%; height:200px; background:var(--input-bg); position:relative; display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--text-muted); }
+.apartment-card-image-placeholder img { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
+.apartment-card-badge { position:absolute; top:16px; right:16px; padding:6px 14px; border-radius:20px; color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; }
+.apartment-card-badge.static-badge { position:static; background:#94a3b8; display:inline-block; }
+
+.gallery-miniatures { display: flex; gap: 8px; padding: 10px 16px; background: var(--background); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.gallery-miniatures img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 1px solid var(--border); }
+.gallery-miniatures img:hover { border-color: var(--primary); }
+
+.apartment-card-details { padding:20px; }
+.apartment-card-location { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--primary); letter-spacing:0.5px; }
+.apartment-card-title { font-size:17px; font-weight:700; margin-top:4px; margin-bottom:8px; line-height:1.3; }
+.apartment-card-address-detail { font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:14px; }
+.apartment-card-address-detail small { color:var(--text-muted); }
+.apartment-card-pricing-row { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:14px; margin-top:14px; }
+.apartment-card-price { font-size:18px; font-weight:800; color:var(--text-main); }
+.apartment-card-price small { font-size:12px; font-weight:400; color:var(--text-muted); }
+.chat-hint { color:var(--primary); font-weight:700; font-size:13px; }
+.gallery-label { font-size:12px; font-weight:700; margin-bottom:10px; }
+
+.tenant-actions-row { margin-top: 8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.status-pill { font-size:11px; font-weight:700; }
+.status-pill.declared { color:#f39c12; }
+.status-pill.confirmed { color:#27ae60; }
+
+.form-input-container { margin-bottom:16px; position:relative; }
+.form-input-container.tight { margin-bottom:8px; }
+.form-input-container label { display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:var(--text-main); }
+.form-input-container i { position:absolute; left:16px; top:38px; color:var(--text-muted); font-size:14px; }
+.form-input-container input, .form-input-container select, .form-input-container textarea { width:100%; padding:14px 16px 14px 44px; border-radius:14px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:14px; font-weight:500; outline:none; transition:all 0.2s; }
+.form-input-container textarea { padding-left:16px; resize:vertical; }
+.form-input-container input:focus, .form-input-container select:focus, .form-input-container textarea:focus { border-color:var(--primary); background:var(--surface); }
+.btn-submit-form { width:100%; padding:16px; border-radius:14px; border:none; color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:10px; box-shadow:var(--shadow-sm); }
+.btn-submit-form:disabled { opacity:0.6; cursor:progress; }
+.btn-submit-form.owner-theme { background:var(--primary-gradient); }
+.btn-submit-form.tenant-theme { background:var(--secondary-gradient); }
+
+.bottom-navigation-bar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:var(--surface); border-top:1px solid var(--border); height:68px; display:grid; grid-template-columns:repeat(3, 1fr); align-items:center; text-align:center; box-shadow:0 -4px 16px rgba(0,0,0,0.03); z-index:999; }
+#scr-tenant-dashboard .bottom-navigation-bar { grid-template-columns:repeat(2, 1fr); }
+.tab-navigation-item { display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; height:100%; gap:4px; }
+.tab-navigation-item i { font-size:18px; }
+.tab-navigation-item.active { color:var(--primary); }
+.tenant-theme .tab-navigation-item.active { color:var(--secondary); }
+
+.search-filter-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:14px; margin-bottom:20px; box-shadow:var(--shadow-sm); }
+.filter-tags-scroll { display:flex; gap:8px; overflow-x:auto; padding-top:10px; padding-bottom:4px; }
+.filter-tags-scroll::-webkit-scrollbar { display:none; }
+.filter-tag { padding:6px 14px; border-radius:20px; background:var(--input-bg); font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; white-space:nowrap; }
+.filter-tag.active { background:var(--secondary); color:#fff; }
+.action-context-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.context-title { font-size:15px; font-weight:700; }
+.btn-action-trigger { background:var(--primary-gradient); border:none; border-radius:10px; color:#fff; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; }
+.btn-action-trigger.danger-btn { background:#e74c3c; }
+.btn-action-trigger.warn-btn { background:#f39c12; }
+.btn-action-trigger.small-btn { padding:4px 8px; font-size:11px; }
+.apartment-card-details > .btn-action-trigger.danger-btn { width:100%; margin-top:14px; border-radius:10px; padding:10px; justify-content:center; }
+
+.chat-list-item { display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); padding:14px; border-radius:16px; margin-bottom:12px; cursor:pointer; box-shadow:var(--shadow-sm); }
+.chat-avatar { width:44px; height:44px; border-radius:50%; background:var(--input-bg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; text-transform:uppercase; color:var(--primary); border:1px solid var(--border); flex-shrink:0; }
+.chat-info { flex:1; min-width:0; }
+.chat-info h4 { font-size:14px; font-weight:700; margin-bottom:2px; }
+.chat-info p { font-size:12px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px; }
+.chat-context { color:var(--primary); font-size:11px; font-weight:700; }
+
+.chat-header-bar { display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); padding:14px; border-radius:18px; margin-bottom:16px; box-shadow:var(--shadow-sm); }
+.chat-messages-scrollarea { height:55vh; overflow-y:auto; padding:10px 4px; display:flex; flex-direction:column; gap:12px; }
+.msg-bubble { max-width:75%; padding:12px 14px; border-radius:16px; font-size:13px; line-height:1.5; position:relative; box-shadow:var(--shadow-sm); }
+.msg-bubble.incoming { background:var(--surface); border:1px solid var(--border); align-self:flex-start; border-top-left-radius:4px; cursor:pointer; }
+.msg-bubble.outgoing { background:var(--primary-gradient); color:#fff; align-self:flex-end; border-top-right-radius:4px; }
+.tenant-theme .msg-bubble.outgoing { background:var(--secondary-gradient); }
+.msg-text { display:block; white-space:pre-wrap; word-break:break-word; }
+.msg-share-hint { display:block; font-size:9px; color:var(--primary); margin-top:5px; font-weight:700; }
+.msg-meta { display:block; font-size:9px; text-align:right; margin-top:4px; opacity:0.6; }
+.system-message { text-align:center; font-size:11px; color:var(--text-muted); margin:6px 0; font-style:italic; }
+.chat-input-row { display:flex; gap:10px; margin-top:14px; background:var(--surface); border:1px solid var(--border); padding:8px; border-radius:16px; box-shadow:var(--shadow-sm); }
+.chat-input-row input { flex:1; border:none; background:transparent; outline:none; padding-left:10px; font-size:13px; color:var(--text-main); }
+.btn-send-message { width:40px; height:40px; border-radius:12px; background:var(--primary-gradient); border:none; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.tenant-theme .btn-send-message { background:var(--secondary-gradient); }
+
+.blank-slate { text-align:center; padding:40px 20px; color:var(--text-muted); font-size:13px; font-weight:500; display:flex; flex-direction:column; gap:10px; align-items:center; }
+.blank-slate i { font-size:32px; opacity:0.4; }
+
+.pwa-fixed-button { display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--text-main); color:var(--background); padding:10px 18px; border-radius:30px; font-size:12px; font-weight:700; box-shadow:var(--shadow-md); z-index:10000; border:none; cursor:pointer; }
+
+.modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.55); display:flex; align-items:flex-end; justify-content:center; z-index:20000; }
+.modal-box { background:var(--surface); width:100%; max-width:480px; max-height:85vh; overflow-y:auto; border-radius:24px 24px 0 0; padding:24px; }
+.modal-box h3 { font-size:17px; font-weight:800; margin-bottom:16px; }
+.rating-row select { padding:10px 12px; }
+.modal-actions { display:flex; gap:10px; margin-top:10px; }
+.modal-actions .btn-submit-form { margin-top:0; }
+
+/* ====== RATING (notation /10) ====== */
+.rating-summary-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:18px; margin-bottom:16px; box-shadow:var(--shadow-sm); }
+.rating-summary-header { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+.rating-average-circle { width:72px; height:72px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-weight:800; flex-shrink:0; box-shadow:var(--shadow-sm); }
+.rating-average-value { font-size:22px; line-height:1; }
+.rating-average-max { font-size:10px; opacity:0.9; margin-top:3px; letter-spacing:0.5px; }
+.rating-label { font-size:14px; font-weight:800; }
+.rating-label-sub { font-size:11px; color:var(--text-muted); margin-top:3px; }
+.rating-criteria-list { display:flex; flex-direction:column; gap:9px; margin-top:4px; }
+.rating-criterion-row { display:flex; flex-direction:column; gap:4px; }
+.rating-criterion-head { display:flex; justify-content:space-between; font-size:11px; font-weight:600; gap:8px; }
+.rating-criterion-head > span:first-child { color:var(--text-muted); flex:1; }
+.rating-criterion-score { color:var(--text-main); font-weight:800; flex-shrink:0; }
+.rating-criterion-bar { height:6px; border-radius:6px; background:var(--input-bg); overflow:hidden; }
+.rating-criterion-bar-fill { height:100%; border-radius:6px; transition:width 0.4s ease; }
+.rating-badge-mini { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:12px; font-size:10px; font-weight:800; color:#fff; }
+.rating-scale-hint { font-size:11px; color:var(--text-muted); margin-bottom:14px; line-height:1.5; }
+.rating-slider-row { margin-bottom:14px; }
+.rating-slider-row label { display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:6px; gap:8px; }
+.rating-slider-value { color:var(--primary); font-weight:800; font-size:12px; background:var(--input-bg); padding:2px 8px; border-radius:8px; }
+.rating-range { width:100%; accent-color:var(--primary); height:24px; }
+.rating-given-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:12px; font-size:11px; font-weight:800; color:#fff; margin-top:8px; }
+</style>
+</head>
+<body>
+
+<button id="pwa-install-btn" class="pwa-fixed-button"><i class="fa-solid fa-mobile-screen-button"></i> Ajouter Kaza à l'écran d'accueil</button>
+
+<!-- ÉCRAN : Sélection du rôle -->
+<div id="scr-role-select" class="screen-view active">
+  <div class="role-selection-layout">
+    <h1 class="app-brand-logo">Kaza</h1>
+    <p class="app-brand-tagline">Gestion immobilière &amp; Connectivité de confiance</p>
+
+    <div class="role-interactive-card" id="role-card-owner">
+      <div class="role-card-icon owner"><i class="fa-solid fa-building-user"></i></div>
+      <h3>Espace Bailleur</h3>
+      <p>Publiez vos résidences à Kinshasa, suivez vos encaissements et communiquez instantanément avec vos locataires.</p>
+    </div>
+
+    <div class="role-interactive-card" id="role-card-tenant">
+      <div class="role-card-icon tenant"><i class="fa-solid fa-house-user"></i></div>
+      <h3>Espace Locataire</h3>
+      <p>Explorez les logements certifiés, gérez vos quittances mensuelles et restez en lien direct avec votre bailleur.</p>
+    </div>
+  </div>
+</div>
+<!-- ÉCRAN : Authentification -->
+<div id="scr-auth" class="screen-view">
+  <div class="dashboard-ui-header">
+    <button class="circle-action-btn" id="btn-back-role"><i class="fa-solid fa-arrow-left"></i></button>
+  </div>
+  <h2 id="auth-title" class="auth-title">Connexion</h2>
+  <p id="auth-subtitle" class="auth-subtitle">Entrez vos identifiants.</p>
+
+  <div class="form-input-container" id="container-auth-name" style="display:none;">
+    <label>Nom complet ou Raison Sociale</label>
+    <i class="fa-solid fa-user"></i>
+    <input type="text" id="auth-name" placeholder="Ex: Jean Mukendi">
+  </div>
+
+  <div class="form-input-container">
+    <label>Adresse e-mail de connexion</label>
+    <i class="fa-solid fa-envelope"></i>
+    <input type="email" id="auth-email" placeholder="Ex: contact@kaza.cd">
+  </div>
+
+  <div class="form-input-container" id="container-auth-phone" style="display:none;">
+    <label>Numéro de Téléphone (WhatsApp)</label>
+    <i class="fa-solid fa-phone"></i>
+    <input type="tel" id="auth-phone" placeholder="Ex: +243 890 000 000">
+  </div>
+
+  <div class="form-input-container">
+    <label>Mot de passe</label>
+    <i class="fa-solid fa-lock"></i>
+    <input type="password" id="auth-password" placeholder="•••••••• (6 caractères min.)">
+  </div>
+
+  <button id="btn-auth-submit" class="btn-submit-form">Continuer</button>
+  <p class="auth-toggle-link" id="auth-toggle-mode-link">Pas encore de compte ? S'inscrire</p>
+</div>
+
+<!-- ÉCRAN : Tableau de bord Bailleur -->
+<div id="scr-owner-dashboard" class="screen-view">
+  <div class="dashboard-ui-header">
+    <div class="profile-greetings">
+      <p>Espace Propriétaire</p>
+      <h2 id="owner-profile-display">Bailleur Kaza</h2>
+    </div>
+    <div class="header-utility-actions">
+      <button class="circle-action-btn" data-action="theme"><i class="fa-solid fa-moon"></i></button>
+      <button class="circle-action-btn" data-action="logout"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+  </div>
+  <div id="owner-tab-injector"></div>
+  <div class="bottom-navigation-bar">
+    <div class="tab-navigation-item" id="nav-tab-owner-home"><i class="fa-solid fa-chart-pie"></i>Statistiques</div>
+    <div class="tab-navigation-item" id="nav-tab-owner-apparts"><i class="fa-solid fa-building"></i> Vos Biens</div>
+    <div class="tab-navigation-item" id="nav-tab-owner-chats"><i class="fa-solid fa-comments"></i> Messages</div>
+  </div>
+</div>
+
+<!-- ÉCRAN : Publier un bien -->
+<div id="scr-add-appart" class="screen-view">
+  <div class="dashboard-ui-header">
+    <button class="circle-action-btn" id="btn-back-add-appart"><i class="fa-solid fa-arrow-left"></i></button>
+    <h3 class="add-appart-title">Publier un nouveau bien</h3>
+  </div>
+
+  <div class="form-input-container"><label>Dénomination du Logement</label><i class="fa-solid fa-font"></i><input type="text" id="app-title" placeholder="Ex: Résidence Fleuve Congo - Studio Chic"></div>
+  <div class="form-input-container"><label>Typologie</label><i class="fa-solid fa-house"></i>
+    <select id="app-type">
+      <option value="Appartement">Appartement</option>
+      <option value="Maison">Maison</option>
+      <option value="Studio">Studio</option>
+    </select>
+  </div>
+  <div class="form-input-container"><label>Commune (Kinshasa)</label><i class="fa-solid fa-map-location-dot"></i>
+    <select id="app-commune">
+      <option value="Gombe">Gombe</option>
+      <option value="Ngaliema">Ngaliema</option>
+      <option value="Limete">Limete</option>
+      <option value="Kasa-Vubu">Kasa-Vubu</option>
+      <option value="Lingwala">Lingwala</option>
+    </select>
+  </div>
+  <div class="form-input-container"><label>Avenue</label><i class="fa-solid fa-road"></i><input type="text" id="app-avenue" placeholder="Ex: Boulevard du 30 Juin"></div>
+  <div class="form-input-container"><label>Numéro de parcelle / rue</label><i class="fa-solid fa-arrow-up-9-1"></i><input type="text" id="app-street-number" placeholder="Ex: 45"></div>
+  <div class="form-input-container" id="container-app-door"><label>Numéro d'Appartement / Porte (Optionnel)</label><i class="fa-solid fa-door-closed"></i><input type="text" id="app-door" placeholder="Ex: 3B"></div>
+  <div class="form-input-container"><label>Point de Repère / Référence</label><i class="fa-solid fa-compass"></i><input type="text" id="app-reference" placeholder="Ex: Derrière l'immeuble Rawbank"></div>
+  <div class="form-input-container"><label>Prix du Loyer Mensuel ($ USD)</label><i class="fa-solid fa-dollar-sign"></i><input type="number" id="app-price" placeholder="Ex: 450"></div>
+  <div class="form-input-container"><label>Spécifications / Caractéristiques</label><i class="fa-solid fa-list-check"></i><input type="text" id="app-specs" placeholder="Ex: 2 Ch, 1 Salon, Électricité stable, Parking"></div>
+
+  <div class="surface-box">
+    <p class="gallery-label"><i class="fa-solid fa-images" style="color:var(--primary)"></i> Galerie d'images du bien (Jusqu'à 4 liens URL)</p>
+    <div class="form-input-container tight"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-1" placeholder="Lien URL de la Photo 1 (Obligatoire/Couverture)"></div>
+    <div class="form-input-container tight"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-2" placeholder="Lien URL de la Photo 2 (Optionnel)"></div>
+    <div class="form-input-container tight"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-3" placeholder="Lien URL de la Photo 3 (Optionnel)"></div>
+    <div class="form-input-container" style="margin-bottom:0;"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-4" placeholder="Lien URL de la Photo 4 (Optionnel)"></div>
+  </div>
+
+  <button class="btn-submit-form owner-theme" id="btn-save-apartment" style="margin-bottom: 20px;">Enregistrer le bien</button>
+</div>
+<!-- ÉCRAN : Tableau de bord Locataire -->
+<div id="scr-tenant-dashboard" class="screen-view tenant-theme">
+  <div class="dashboard-ui-header">
+    <div class="profile-greetings">
+      <p>Espace Locataire</p>
+      <h2 id="tenant-profile-display">Locataire Kaza</h2>
+    </div>
+    <div class="header-utility-actions">
+      <button class="circle-action-btn" data-action="theme"><i class="fa-solid fa-moon"></i></button>
+      <button class="circle-action-btn" data-action="logout"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+  </div>
+  <div id="tenant-tab-injector"></div>
+  <div class="bottom-navigation-bar">
+    <div class="tab-navigation-item" id="nav-tab-tenant-discover"><i class="fa-solid fa-house-laptop"></i>Catalogue</div>
+    <div class="tab-navigation-item" id="nav-tab-tenant-chats"><i class="fa-solid fa-comment-dots"></i>Messages</div>
+  </div>
+</div>
+
+<!-- ÉCRAN : Fenêtre de Chat -->
+<div id="scr-chat-room" class="screen-view">
+  <div class="chat-header-bar">
+    <button class="circle-action-btn" id="btn-back-from-chat"><i class="fa-solid fa-arrow-left"></i></button>
+    <div class="chat-avatar" id="chat-room-avatar">-</div>
+    <div>
+      <h4 class="chat-room-title">Correspondant</h4>
+      <p id="chat-room-subtitle" class="chat-room-subtitle">Objet de discussion</p>
+    </div>
+  </div>
+  <div class="chat-messages-scrollarea" id="chat-messages-container"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chat-input-field" placeholder="Rédiger votre message Kaza...">
+    <button class="btn-send-message" id="btn-send-message"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { browserLocalPersistence, createUserWithEmailAndPassword, deleteUser, getAuth, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
+import { getToken } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging.js";
+
+// ===================== firebase-init.js =====================
+const firebaseConfig = {
+  apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
+  authDomain: "kaza-bf0dc.firebaseapp.com",
+  projectId: "kaza-bf0dc",
+  storageBucket: "kaza-bf0dc.firebasestorage.app",
+  messagingSenderId: "785266371417",
+  appId: "1:785266371417:web:9dc8df1cfef4e12ec63a48",
+  measurementId: "G-MTDDTVT839",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error("Impossible de configurer la persistance Auth :", err);
+});
+
+async function getMessagingIfSupported() {
+  try {
+    const { isSupported, getMessaging } = await import(
+      "https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging.js"
+    );
+    const supported = await isSupported();
+    if (!supported) return null;
+    return getMessaging(app);
+  } catch (err) {
+    console.warn("FCM non disponible sur ce navigateur :", err);
+    return null;
+  }
+}
+
+console.log("KAZA : Firebase initialisé (projet kaza-bf0dc).");
+// ===================== state.js =====================
+const state = {
+  currentUser: null,
+  pendingRole: null,
+  authMode: "login",
+  apartments: [],
+  chats: [],
+  activeChatId: null,
+  messagesUnsubscribe: null,
+  searchQuery: "",
+  filterType: "Tous",
+  filterCommune: "Toutes",
+};
+
+function resetStateOnSignOut() {
+  state.currentUser = null;
+  state.pendingRole = null;
+  state.authMode = "login";
+  state.apartments = [];
+  state.chats = [];
+  state.activeChatId = null;
+  if (typeof state.messagesUnsubscribe === "function") {
+    state.messagesUnsubscribe();
+  }
+  state.messagesUnsubscribe = null;
+  state.searchQuery = "";
+  state.filterType = "Tous";
+  state.filterCommune = "Toutes";
+}
+
+
+// ===================== dom-utils.js =====================
+function el(tag, { className, attrs, text, html, children, on } = {}) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (attrs) {
+    for (const [key, value] of Object.entries(attrs)) {
+      if (value !== null && value !== undefined) node.setAttribute(key, value);
+    }
+  }
+  if (text !== undefined) node.textContent = text;
+  if (html !== undefined) node.innerHTML = html;
+  if (children) {
+    children.forEach((child) => { if (child) node.appendChild(child); });
+  }
+  if (on) {
+    for (const [event, handler] of Object.entries(on)) {
+      node.addEventListener(event, handler);
+    }
+  }
+  return node;
+}
+
+function clear(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function iconEl(faClass, extraStyle) {
+  const i = document.createElement("i");
+  i.className = faClass;
+  if (extraStyle) i.setAttribute("style", extraStyle);
+  return i;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+
+// ===================== auth.js =====================
+async function isTenantEmailAuthorized(email) {
+  const q = query(
+    collection(db, "authorizations"),
+    where("email", "==", email),
+    where("status", "==", "active"),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
+
+let registrationInFlight = false;
+
+async function withRegistrationGuard(fn) {
+  registrationInFlight = true;
+  try { return await fn(); }
+  finally { registrationInFlight = false; }
+}
+
+function isRegistrationInFlight() { return registrationInFlight; }
+async function registerUser({ role, name, email, phone, password }) {
+  return withRegistrationGuard(async () => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const user = cred.user;
+
+    if (role === "tenant") {
+      const authorized = await isTenantEmailAuthorized(email);
+      if (!authorized) {
+        await deleteUser(user).catch((e) =>
+          console.error("Nettoyage du compte non autorisé impossible :", e)
+        );
+        throw new Error(
+          "🛑 Accès refusé : votre adresse email n'est pas encore autorisée par un bailleur sur KAZA."
+        );
+      }
+    }
+
+    const profile = {
+      name: name || (role === "owner" ? "Bailleur KAZA" : "Locataire KAZA"),
+      email,
+      phone: phone || "",
+      role,
+      createdAt: serverTimestamp(),
+    };
+    await setDoc(doc(db, "users", user.uid), profile);
+    state.currentUser = { uid: user.uid, ...profile };
+    return state.currentUser;
+  });
+}
+
+async function loginUser({ email, password }) {
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  return loadUserProfile(cred.user.uid);
+}
+
+async function loadUserProfile(uid) {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) {
+    throw new Error("Profil introuvable pour ce compte. Contactez le support KAZA.");
+  }
+  return { uid, ...snap.data() };
+}
+
+async function logoutUser() {
+  await signOut(auth);
+  resetStateOnSignOut();
+}
+
+function watchAuthState(onReady) {
+  return onAuthStateChanged(auth, async (user) => {
+    if (registrationInFlight) return;
+    if (!user) { resetStateOnSignOut(); onReady(null); return; }
+    try {
+      const profile = await loadUserProfile(user.uid);
+      state.currentUser = profile;
+      onReady(profile);
+    } catch (err) {
+      console.error("Erreur de chargement du profil KAZA :", err);
+      await signOut(auth).catch(() => {});
+      onReady(null);
+    }
+  });
+}
+
+
+// ===================== authorizations.js =====================
+async function authorizeTenantEmail(email) {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    throw new Error("Veuillez saisir un email valide.");
+  }
+  await addDoc(collection(db, "authorizations"), {
+    ownerId: state.currentUser.uid,
+    email: cleanEmail,
+    status: "active",
+    createdAt: serverTimestamp(),
+  });
+  return cleanEmail;
+}
+// ===================== apartments.js =====================
+const MAX_PHOTOS = 4;
+
+function buildApartmentPayload(form) {
+  const title = form.title.trim();
+  const price = Number(form.price);
+  if (!title || !price || !form.avenue.trim() || !form.streetNumber.trim() || !form.reference.trim()) {
+    throw new Error("Merci de remplir tous les détails obligatoires (Titre, Avenue, N°, Référence, Prix).");
+  }
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error("Le prix du loyer doit être un nombre positif.");
+  }
+  const images = [form.photo1, form.photo2, form.photo3, form.photo4]
+    .map((u) => (u || "").trim()).filter(Boolean).slice(0, MAX_PHOTOS);
+  if (images.length === 0) {
+    throw new Error("Merci de fournir au moins une photo de couverture (URL).");
+  }
+  return {
+    title, type: form.type, commune: form.commune,
+    avenue: form.avenue.trim(),
+    streetNumber: form.streetNumber.trim(),
+    door: form.door ? form.door.trim() : null,
+    reference: form.reference.trim(),
+    price,
+    specs: form.specs?.trim() || "Non spécifié",
+    imageUrl: images[0], images,
+    status: "Disponible",
+    ownerId: state.currentUser.uid,
+    ownerName: state.currentUser.name,
+    tenantId: null, tenantName: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+}
+
+async function createApartment(form) {
+  const payload = buildApartmentPayload(form);
+  await addDoc(collection(db, "apartments"), payload);
+}
+
+async function deleteApartment(apartmentId) {
+  await deleteDoc(doc(db, "apartments", apartmentId));
+}
+
+function watchOwnerApartments(ownerId, callback) {
+  const q = query(
+    collection(db, "apartments"),
+    where("ownerId", "==", ownerId),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+function watchCatalog(callback) {
+  const q = query(collection(db, "apartments"), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+function filterCatalog(apartments) {
+  const { searchQuery, filterType, filterCommune } = state;
+  return apartments.filter((item) => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === "Tous" || item.type === filterType;
+    const matchesCommune = filterCommune === "Toutes" || item.commune === filterCommune;
+    return matchesSearch && matchesType && matchesCommune;
+  });
+}
+
+
+// ===================== leases.js =====================
+async function rentApartment(apartmentId) {
+  const apartmentRef = doc(db, "apartments", apartmentId);
+  const tenant = state.currentUser;
+  let ownerId;
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(apartmentRef);
+    if (!snap.exists()) throw new Error("Ce logement n'existe plus.");
+    const data = snap.data();
+    if (data.status === "Occupé") {
+      throw new Error("Trop tard : ce logement vient d'être loué par quelqu'un d'autre.");
+    }
+    ownerId = data.ownerId;
+    tx.update(apartmentRef, {
+      status: "Occupé",
+      tenantId: tenant.uid, tenantName: tenant.name,
+      paymentStatus: "en_attente",
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  const leaseRef = await addDoc(collection(db, "leases"), {
+    apartmentId, ownerId,
+    tenantId: tenant.uid, tenantName: tenant.name,
+    tenantPhone: tenant.phone || "",
+    status: "active", paymentStatus: "en_attente",
+    startDate: serverTimestamp(), endDate: null,
+  });
+
+  const chatId = await getOrCreateChat({ ownerId, apartmentId });
+  await postSystemMessage(
+    chatId,
+    `🚨 NOTIFICATION : Le locataire ${tenant.name} (${tenant.phone || "pas de numéro"}) demande à louer votre résidence.`
+  );
+  return leaseRef.id;
+}
+async function leaveApartment(apartmentId) {
+  const apartmentRef = doc(db, "apartments", apartmentId);
+  const tenant = state.currentUser;
+  let ownerId; let leaseId = null;
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(apartmentRef);
+    if (!snap.exists()) throw new Error("Ce logement n'existe plus.");
+    const data = snap.data();
+    if (data.tenantId !== tenant.uid) {
+      throw new Error("Vous n'êtes pas le locataire actuel de ce bien.");
+    }
+    ownerId = data.ownerId;
+    tx.update(apartmentRef, {
+      status: "Disponible", tenantId: null, tenantName: null,
+      paymentStatus: null, updatedAt: serverTimestamp(),
+    });
+  });
+
+  const activeLease = await getActiveLease(apartmentId, tenant.uid);
+  if (activeLease) {
+    leaseId = activeLease.id;
+    await updateDoc(doc(db, "leases", leaseId), {
+      status: "ended", endDate: serverTimestamp(),
+    });
+  }
+
+  const chatId = await getOrCreateChat({ ownerId, apartmentId });
+  await postSystemMessage(
+    chatId,
+    `📭 NOTIFICATION DE DÉPART : Le locataire ${tenant.name} a libéré votre résidence.`
+  );
+  return leaseId;
+}
+
+async function getActiveLease(apartmentId, tenantId) {
+  const q = query(
+    collection(db, "leases"),
+    where("apartmentId", "==", apartmentId),
+    where("tenantId", "==", tenantId),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() };
+}
+
+
+// ===================== payments.js =====================
+async function findActiveLease(apartmentId) {
+  const q = query(
+    collection(db, "leases"),
+    where("apartmentId", "==", apartmentId),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() };
+}
+
+async function notifyPayment(apartment) {
+  await updateDoc(doc(db, "apartments", apartment.id), {
+    paymentStatus: "signale", updatedAt: serverTimestamp(),
+  });
+  const lease = await findActiveLease(apartment.id);
+  if (lease) {
+    await updateDoc(doc(db, "leases", lease.id), { paymentStatus: "signale" });
+  }
+  const chatId = await getOrCreateChat({
+    ownerId: apartment.ownerId, apartmentId: apartment.id, apartmentTitle: apartment.title,
+  });
+  await postSystemMessage(
+    chatId,
+    `💰 LOGISTIQUE PAIEMENT : Le locataire ${state.currentUser.name} déclare avoir réglé le loyer de ${apartment.price} $ (déclaration non vérifiée, en attente de confirmation du bailleur).`
+  );
+}
+
+async function confirmTenantPayment(apartment) {
+  await updateDoc(doc(db, "apartments", apartment.id), {
+    paymentStatus: "confirme", updatedAt: serverTimestamp(),
+  });
+  const lease = await findActiveLease(apartment.id);
+  if (lease) {
+    await updateDoc(doc(db, "leases", lease.id), { paymentStatus: "confirme" });
+  }
+  const chatId = await getOrCreateChat({
+    ownerId: state.currentUser.uid, apartmentId: apartment.id, apartmentTitle: apartment.title,
+  });
+  await postSystemMessage(
+    chatId,
+    "✅ PAIEMENT CONFIRMÉ : le bailleur a validé la réception du loyer pour ce mois."
+  );
+}
+
+
+// ===================== ratings.js (NOUVEAU : /10) =====================
+const RATING_MIN = 1;
+const RATING_MAX = 10;
+
+const RATING_CRITERIA = [
+  { key: "capacitePaiement", label: "Capacité / régularité de paiement" },
+  { key: "ponctualite", label: "Paiement des loyers à temps" },
+  { key: "entretien", label: "Entretien et maintien du logement" },
+  { key: "etatSortie", label: "État des lieux de sortie" },
+  { key: "communication", label: "Communication avec le bailleur" },
+  { key: "respectReglement", label: "Respect du règlement intérieur" },
+  { key: "respectVoisinage", label: "Respect du voisinage" },
+  { key: "fiabilite", label: "Fiabilité générale" },
+];
+
+async function getEndedLeasesToRate(ownerId) {
+  const q = query(
+    collection(db, "leases"),
+    where("ownerId", "==", ownerId),
+    where("status", "==", "ended")
+  );
+  const snap = await getDocs(q);
+  const leases = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const withoutRating = [];
+  for (const lease of leases) {
+    const ratingSnap = await getDoc(doc(db, "ratings", lease.id));
+    if (!ratingSnap.exists()) withoutRating.push(lease);
+  }
+  return withoutRating;
+}
+async function submitRating(lease, scores, comment) {
+  const sanitized = {};
+  RATING_CRITERIA.forEach((c) => {
+    const v = Number(scores[c.key]);
+    const safe = Number.isFinite(v) ? Math.min(RATING_MAX, Math.max(RATING_MIN, Math.round(v))) : RATING_MIN;
+    sanitized[c.key] = safe;
+  });
+  const values = RATING_CRITERIA.map((c) => sanitized[c.key]);
+  const average = values.reduce((s, v) => s + v, 0) / RATING_CRITERIA.length;
+
+  await setDoc(doc(db, "ratings", lease.id), {
+    leaseId: lease.id,
+    ownerId: state.currentUser.uid,
+    ownerName: state.currentUser.name || "Bailleur",
+    tenantId: lease.tenantId,
+    tenantName: lease.tenantName || "",
+    apartmentId: lease.apartmentId,
+    scores: sanitized,
+    average: Math.round(average * 10) / 10,
+    max: RATING_MAX,
+    comment: (comment || "").trim().slice(0, 1000),
+    status: "published",
+    createdAt: serverTimestamp(),
+  });
+}
+
+async function getTenantRatings(tenantId) {
+  const q = query(
+    collection(db, "ratings"),
+    where("tenantId", "==", tenantId),
+    where("status", "==", "published")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+async function getTenantRatingSummary(tenantId) {
+  const ratings = await getTenantRatings(tenantId);
+  if (ratings.length === 0) return { count: 0, average: null, criteria: {} };
+
+  const total = ratings.reduce((s, r) => s + Number(r.average || 0), 0);
+  const criteria = {};
+  RATING_CRITERIA.forEach((c) => {
+    const vals = ratings
+      .map((r) => Number(r.scores?.[c.key] || 0))
+      .filter((v) => v > 0);
+    criteria[c.key] = vals.length
+      ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10
+      : 0;
+  });
+  return {
+    count: ratings.length,
+    average: Math.round((total / ratings.length) * 10) / 10,
+    criteria,
+  };
+}
+
+async function getRatingForLease(leaseId) {
+  const snap = await getDoc(doc(db, "ratings", leaseId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+
+// ===================== chat.js =====================
+function buildChatId(ownerId, tenantId) {
+  return `${tenantId}_${ownerId}`;
+}
+
+async function getOrCreateChat({ ownerId, apartmentId, ownerName, apartmentTitle }) {
+  const tenant = state.currentUser;
+  const chatId = buildChatId(ownerId, tenant.uid);
+  const chatRef = doc(db, "chats", chatId);
+  const snap = await getDoc(chatRef);
+
+  if (!snap.exists()) {
+    await setDoc(chatRef, {
+      participantIds: [ownerId, tenant.uid],
+      ownerId, ownerName: ownerName || "",
+      tenantId: tenant.uid, tenantName: tenant.name,
+      apartmentId: apartmentId || null,
+      context: apartmentTitle || "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+  return chatId;
+}
+
+async function postSystemMessage(chatId, text) {
+  await addDoc(collection(db, "chats", chatId, "messages"), {
+    senderId: "system", text, createdAt: serverTimestamp(),
+  });
+}
+
+async function sendMessage(chatId, text) {
+  const clean = text.trim();
+  if (!clean) return;
+  if (clean.length > 2000) throw new Error("Message trop long (2000 caractères maximum).");
+  await addDoc(collection(db, "chats", chatId, "messages"), {
+    senderId: state.currentUser.uid, text: clean, createdAt: serverTimestamp(),
+  });
+}
+
+async function broadcastToAllTenants(text) {
+  const owner = state.currentUser;
+  const q = query(collection(db, "chats"), where("ownerId", "==", owner.uid));
+  const snap = await getDocs(q);
+  let count = 0;
+  for (const chatDoc of snap.docs) {
+    await addDoc(collection(db, "chats", chatDoc.id, "messages"), {
+      senderId: owner.uid,
+      text: `[Diffusion Groupée] : ${text}`,
+      createdAt: serverTimestamp(),
+    });
+    count += 1;
+  }
+  return count;
+}
+
+function watchMyChats(callback) {
+  const { role, uid } = state.currentUser;
+  const field = role === "owner" ? "ownerId" : "tenantId";
+  const q = query(collection(db, "chats"), where(field, "==", uid));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+function watchMessages(chatId, callback) {
+  const q = query(
+    collection(db, "chats", chatId, "messages"),
+    orderBy("createdAt", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+
+// ===================== notifications.js =====================
+const VAPID_KEY = "VAPID_KEY_A_CONFIGURER";
+
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return null;
+  const messaging = await getMessagingIfSupported();
+  if (!messaging) return null;
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return null;
+
+  try {
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    if (!token) return null;
+    await setDoc(
+      doc(db, "users", state.currentUser.uid, "notificationTokens", token.slice(0, 100)),
+      { token, platform: navigator.platform || "web", createdAt: serverTimestamp() }
+    );
+    return token;
+  } catch (err) {
+    console.error("Impossible d'obtenir le token FCM :", err);
+    return null;
+  }
+}
+// ===================== ui.js =====================
+let unsubApartments = null;
+let unsubChats = null;
+
+function changeView(screenId) {
+  document.querySelectorAll(".screen-view").forEach((v) => v.classList.remove("active"));
+  document.getElementById(screenId).classList.add("active");
+}
+
+function showError(err) {
+  const message = err?.message || "Une erreur est survenue.";
+  alert(message);
+  console.error(err);
+}
+
+function initRoleSelection() {
+  document.getElementById("role-card-owner").addEventListener("click", () => openAuthScreen("owner"));
+  document.getElementById("role-card-tenant").addEventListener("click", () => openAuthScreen("tenant"));
+}
+
+function openAuthScreen(role) {
+  state.pendingRole = role;
+  state.authMode = "login";
+  document.getElementById("container-auth-name").style.display = "none";
+  document.getElementById("container-auth-phone").style.display = "none";
+  document.getElementById("auth-title").textContent = "Connexion " + (role === "owner" ? "Bailleur" : "Locataire");
+  document.getElementById("auth-subtitle").textContent = "Entrez vos accès pour piloter votre espace KAZA.";
+  document.getElementById("btn-auth-submit").className =
+    "btn-submit-form " + (role === "owner" ? "owner-theme" : "tenant-theme");
+  document.getElementById("auth-toggle-mode-link").textContent = "Pas encore de compte ? S'inscrire";
+  document.getElementById("auth-name").value = "";
+  document.getElementById("auth-email").value = "";
+  document.getElementById("auth-phone").value = "";
+  document.getElementById("auth-password").value = "";
+  changeView("scr-auth");
+}
+
+function toggleAuthMode() {
+  const isLogin = state.authMode === "login";
+  state.authMode = isLogin ? "register" : "login";
+  const roleLabel = state.pendingRole === "owner" ? "Bailleur" : "Locataire";
+  document.getElementById("auth-title").textContent = (isLogin ? "Inscription " : "Connexion ") + roleLabel;
+  document.getElementById("container-auth-name").style.display = isLogin ? "block" : "none";
+  document.getElementById("container-auth-phone").style.display = isLogin ? "block" : "none";
+  document.getElementById("auth-toggle-mode-link").textContent =
+    isLogin ? "Déjà inscrit ? Se connecter" : "Pas encore de compte ? S'inscrire";
+}
+
+async function submitAuthForm() {
+  const name = document.getElementById("auth-name").value.trim();
+  const email = document.getElementById("auth-email").value.trim().toLowerCase();
+  const phone = document.getElementById("auth-phone").value.trim();
+  const password = document.getElementById("auth-password").value;
+
+  if (!email || !password) { alert("Veuillez saisir votre email et votre mot de passe."); return; }
+  if (password.length < 6) { alert("Le mot de passe doit contenir au moins 6 caractères."); return; }
+
+  const submitBtn = document.getElementById("btn-auth-submit");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Veuillez patienter…";
+
+  try {
+    if (state.authMode === "register") {
+      const profile = await registerUser({ role: state.pendingRole, name, email, phone, password });
+      enterAppForUser(profile);
+    } else {
+      await loginUser({ email, password });
+    }
+  } catch (err) { showError(err); }
+  finally { submitBtn.disabled = false; submitBtn.textContent = "Continuer"; }
+}
+
+function initAuthScreen() {
+  document.getElementById("btn-back-role").addEventListener("click", () => changeView("scr-role-select"));
+  document.getElementById("btn-auth-submit").addEventListener("click", submitAuthForm);
+  document.getElementById("auth-toggle-mode-link").addEventListener("click", toggleAuthMode);
+}
+
+function enterAppForUser(profile) {
+  if (unsubApartments) unsubApartments();
+  if (unsubChats) unsubChats();
+
+  if (profile.role === "owner") {
+    document.getElementById("owner-profile-display").textContent = profile.name;
+    changeView("scr-owner-dashboard");
+    activateOwnerTab("home");
+  } else {
+    document.getElementById("tenant-profile-display").textContent = profile.name;
+    changeView("scr-tenant-dashboard");
+    activateTenantTab("discover");
+  }
+  requestNotificationPermission().catch(() => {});
+}
+
+function exitAppToRoleSelect() {
+  if (unsubApartments) unsubApartments();
+  if (unsubChats) unsubChats();
+  changeView("scr-role-select");
+}
+
+function ratingColor(average) {
+  if (average >= 8) return "#10b981";
+  if (average >= 6.5) return "#f59e0b";
+  if (average >= 4) return "#f97316";
+  return "#e74c3c";
+}
+
+function ratingLabel(average) {
+  if (average >= 9) return "Locataire d'exception";
+  if (average >= 8) return "Très bon locataire";
+  if (average >= 6.5) return "Bon locataire";
+  if (average >= 5) return "Locataire correct";
+  if (average >= 3) return "Locataire à surveiller";
+  return "Locataire à risque";
+}
+
+function buildRatingSummaryCard(summary, title = "Ma réputation locative") {
+  const card = el("div", { className: "rating-summary-card" });
+
+  if (!summary || summary.count === 0) {
+    card.appendChild(el("div", {
+      className: "rating-summary-header",
+      children: [
+        el("div", {
+          className: "rating-average-circle",
+          attrs: { style: "background:#94a3b8;" },
+          children: [
+            el("span", { className: "rating-average-value", text: "—" }),
+            el("span", { className: "rating-average-max", text: `/ ${RATING_MAX}` }),
+          ],
+        }),
+        el("div", { children: [
+          el("div", { className: "rating-label", text: title }),
+          el("div", { className: "rating-label-sub", text: "Aucune évaluation reçue pour le moment." }),
+        ]}),
+      ],
+    }));
+    return card;
+  }
+
+  const avg = summary.average;
+  const color = ratingColor(avg);
+
+  card.appendChild(el("div", {
+    className: "rating-summary-header",
+    children: [
+      el("div", {
+        className: "rating-average-circle",
+        attrs: { style: `background:${color};` },
+        children: [
+          el("span", { className: "rating-average-value", text: avg.toFixed(1) }),
+          el("span", { className: "rating-average-max", text: `/ ${RATING_MAX}` }),
+        ],
+      }),
+      el("div", { children: [
+        el("div", { className: "rating-label", text: title }),
+        el("div", { className: "rating-label-sub", text: ratingLabel(avg) }),
+        el("div", { className: "rating-label-sub", text: `${summary.count} évaluation${summary.count > 1 ? "s" : ""} reçue${summary.count > 1 ? "s" : ""}` }),
+      ]}),
+    ],
+  }));
+
+  const list = el("div", { className: "rating-criteria-list" });
+  RATING_CRITERIA.forEach((c) => {
+    const v = summary.criteria[c.key] || 0;
+    const pct = Math.max(0, Math.min(100, (v / RATING_MAX) * 100));
+    list.appendChild(el("div", {
+      className: "rating-criterion-row",
+      children: [
+        el("div", { className: "rating-criterion-head", children: [
+          el("span", { text: c.label }),
+          el("span", { className: "rating-criterion-score", text: `${v.toFixed(1)} / ${RATING_MAX}` }),
+        ]}),
+        el("div", { className: "rating-criterion-bar", children: [
+          el("div", { className: "rating-criterion-bar-fill",
+            attrs: { style: `width:${pct}%; background:${ratingColor(v)};` } }),
+        ]}),
+      ],
+    }));
+  });
+  card.appendChild(list);
+  return card;
+}
+
+function buildRatingBadgeMini(average) {
+  if (average === null || average === undefined) return null;
+  return el("span", {
+    className: "rating-badge-mini",
+    attrs: { style: `background:${ratingColor(average)};` },
+    children: [
+      iconEl("fa-solid fa-star"),
+      document.createTextNode(` ${average.toFixed(1)}/${RATING_MAX}`),
+    ],
+  });
+}
+
+function initOwnerDashboard() {
+  document.getElementById("nav-tab-owner-home").addEventListener("click", () => activateOwnerTab("home"));
+  document.getElementById("nav-tab-owner-apparts").addEventListener("click", () => activateOwnerTab("apparts"));
+  document.getElementById("nav-tab-owner-chats").addEventListener("click", () => activateOwnerTab("chats"));
+  document.querySelectorAll('#scr-owner-dashboard [data-action="theme"]')
+    .forEach((b) => b.addEventListener("click", toggleAppTheme));
+  document.querySelectorAll('#scr-owner-dashboard [data-action="logout"]')
+    .forEach((b) => b.addEventListener("click", () => logoutUser()));
+}
+
+function activateOwnerTab(tabName) {
+  document.querySelectorAll("#scr-owner-dashboard .tab-navigation-item")
+    .forEach((t) => t.classList.remove("active"));
+  document.getElementById(`nav-tab-owner-${tabName}`).classList.add("active");
+
+  const container = document.getElementById("owner-tab-injector");
+  clear(container);
+
+  if (unsubApartments) unsubApartments();
+  unsubApartments = watchOwnerApartments(state.currentUser.uid, (apartments) => {
+    state.apartments = apartments;
+    if (tabName === "home") renderOwnerHome(container, apartments);
+    if (tabName === "apparts") renderOwnerApartments(container, apartments);
+  });
+
+  if (tabName === "chats") renderChatList(container);
+}
+
+async function renderOwnerHome(container, apartments) {
+  clear(container);
+
+  const statsRow = el("div", { className: "stats-grid-row" });
+  statsRow.appendChild(kpiCard("fa-solid fa-building", "Vos Biens", apartments.length, "blue-indicator"));
+  statsRow.appendChild(kpiCard("fa-solid fa-user-check", "Actifs",
+    apartments.filter((a) => a.status === "Occupé").length, "green-indicator"));
+  container.appendChild(statsRow);
+
+  const revenueTotal = apartments.reduce(
+    (acc, curr) => acc + (curr.status === "Occupé" ? Number(curr.price || 0) : 0), 0
+  );
+  container.appendChild(el("div", {
+    className: "revenue-box",
+    children: [
+      el("div", { children: [
+        el("h4", { text: "Revenus Estimés" }),
+        el("p", { text: "Cumul de vos loyers occupés" }),
+      ]}),
+      el("strong", { text: `${revenueTotal} $` }),
+    ],
+  }));
+
+  const authBox = el("div", { className: "surface-box" });
+  authBox.appendChild(el("h4", {
+    children: [
+      iconEl("fa-solid fa-user-shield", "color:var(--primary)"),
+      document.createTextNode(" Autoriser un locataire"),
+    ],
+  }));
+  authBox.appendChild(el("p", {
+    className: "muted-text",
+    text: "Inscrivez l'email de votre locataire pour lui permettre de s'inscrire sur KAZA.",
+  }));
+  const emailInput = el("input", { attrs: { type: "email", placeholder: "Ex: locataire@gmail.com" } });
+  authBox.appendChild(el("div", {
+    className: "inline-form-row",
+    children: [
+      emailInput,
+      el("button", {
+        className: "btn-action-trigger",
+        children: [iconEl("fa-solid fa-plus")],
+        on: { click: async () => {
+          try {
+            const email = await authorizeTenantEmail(emailInput.value);
+            alert(`✅ Succès : le locataire [ ${email} ] peut désormais s'inscrire.`);
+            emailInput.value = "";
+          } catch (err) { showError(err); }
+        }},
+      }),
+    ],
+  }));
+  container.appendChild(authBox);
+
+  apartments.filter((ap) => ap.paymentStatus === "signale").forEach((ap) => {
+    container.appendChild(el("div", {
+      className: "pending-payment-box",
+      children: [
+        el("span", { children: [
+          el("strong", { text: ap.tenantName || "Locataire" }),
+          document.createTextNode(" signale avoir payé pour : "),
+          el("br"),
+          el("em", { text: ap.title }),
+        ]}),
+        el("button", {
+          className: "btn-action-trigger confirm-btn",
+          text: "Confirmer",
+          on: { click: async (e) => {
+            e.target.disabled = true;
+            try {
+              await confirmTenantPayment(ap);
+              alert("Paiement validé. Reçu transmis au locataire.");
+            } catch (err) { showError(err); }
+            finally { e.target.disabled = false; }
+          }},
+        }),
+      ],
+    }));
+  });
+
+  const toRate = await getEndedLeasesToRate(state.currentUser.uid).catch(() => []);
+  if (toRate.length > 0) {
+    const ratingBox = el("div", { className: "surface-box" });
+    ratingBox.appendChild(el("h4", {
+      children: [
+        iconEl("fa-solid fa-star", "color:var(--primary)"),
+        document.createTextNode(" Locataires à évaluer"),
+      ],
+    }));
+    ratingBox.appendChild(el("p", {
+      className: "muted-text",
+      text: "Ces locataires ont quitté vos biens. Notez-les sur 10 pour bâtir la confiance de la communauté KAZA.",
+    }));
+    toRate.forEach((lease) => {
+      ratingBox.appendChild(el("div", {
+        className: "inline-form-row",
+        children: [
+          el("span", { text: lease.tenantName || "Locataire" }),
+          el("button", {
+            className: "btn-action-trigger",
+            children: [iconEl("fa-solid fa-star"), document.createTextNode(" Évaluer /10")],
+            on: { click: () => openRatingModal(lease) },
+          }),
+        ],
+      }));
+    });
+    container.appendChild(ratingBox);
+  }
+}
+
+function kpiCard(iconClass, label, value, colorClass) {
+  return el("div", {
+    className: `stats-kpi-card ${colorClass}`,
+    children: [
+      el("div", { className: "stats-kpi-header",
+        children: [iconEl(iconClass), document.createTextNode(" " + label)] }),
+      el("div", { className: "stats-kpi-number", text: String(value) }),
+    ],
+  });
+}
+
+function renderOwnerApartments(container, apartments) {
+  clear(container);
+  container.appendChild(el("div", {
+    className: "action-context-bar",
+    children: [
+      el("span", { className: "context-title", text: "Vos Annonces" }),
+      el("button", {
+        className: "btn-action-trigger",
+        children: [iconEl("fa-solid fa-plus"), document.createTextNode(" Ajouter")],
+        on: { click: () => changeView("scr-add-appart") },
+      }),
+    ],
+  }));
+
+  if (apartments.length === 0) {
+    container.appendChild(blankSlate("fa-solid fa-folder-open", "Aucun bien publié."));
+    return;
+  }
+  apartments.forEach((item) => container.appendChild(buildApartmentCard(item, { mode: "owner" })));
+}
+
+function blankSlate(iconClass, text) {
+  return el("div", {
+    className: "blank-slate",
+    children: [iconEl(iconClass), el("span", { text })],
+  });
+}
+
+function fullAddress(item) {
+  let addr = `Av. ${item.avenue}, N° ${item.streetNumber}`;
+  if (item.door) addr += `, Apt/Porte ${item.door}`;
+  return addr;
+}
+
+function buildApartmentCard(item, { mode }) {
+  const card = el("div", { className: "apartment-card-ui" });
+
+  const imagePlaceholder = el("div", { className: "apartment-card-image-placeholder" });
+  const coverImg = item.imageUrl
+    ? el("img", { attrs: { id: `cover-${item.id}`, src: item.imageUrl, alt: item.title } })
+    : iconEl("fa-solid fa-image");
+  imagePlaceholder.appendChild(coverImg);
+  imagePlaceholder.appendChild(el("span", {
+    className: "apartment-card-badge",
+    attrs: { style: `background:${item.status === "Occupé" ? "#e74c3c" : "var(--primary)"}` },
+    text: item.status || "Disponible",
+  }));
+  card.appendChild(imagePlaceholder);
+
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    const gallery = el("div", { className: "gallery-miniatures" });
+    item.images.forEach((imgUrl) => {
+      if (!imgUrl) return;
+      gallery.appendChild(el("img", {
+        attrs: { src: imgUrl, alt: "" },
+        on: { click: (e) => {
+          e.stopPropagation();
+          if (coverImg.tagName === "IMG") coverImg.src = imgUrl;
+        }},
+      }));
+    });
+    card.appendChild(gallery);
+  }
+
+  const details = el("div", { className: "apartment-card-details" });
+  details.appendChild(el("span", {
+    className: "apartment-card-location",
+    text: `${item.commune}, Kinshasa${mode === "tenant" ? " • Par " + item.ownerName : ""}`,
+  }));
+  details.appendChild(el("h4", {
+    className: "apartment-card-title",
+    text: mode === "owner" ? `${item.title} (${item.type})` : item.title,
+  }));
+  details.appendChild(el("p", {
+    className: "apartment-card-address-detail",
+    children: [
+      iconEl("fa-solid fa-location-dot", "color:var(--primary)"),
+      document.createTextNode(" " + fullAddress(item)),
+      el("br"),
+      el("small", { text: `Réf: ${item.reference}` }),
+    ],
+  }));
+
+  if (mode === "owner") {
+    details.appendChild(el("div", {
+      className: "apartment-card-pricing-row",
+      children: [
+        el("span", { className: "apartment-card-price",
+          children: [document.createTextNode(`${item.price} $ `), el("small", { text: "/mois" })] }),
+        el("span", { className: "muted-strong", text: item.specs }),
+      ],
+    }));
+    details.appendChild(el("button", {
+      className: "btn-action-trigger danger-btn",
+      children: [iconEl("fa-solid fa-trash-can"), document.createTextNode(" Supprimer ce bien définitivement")],
+      on: { click: async (e) => {
+        e.stopPropagation();
+        if (!confirm("⚠️ Supprimer définitivement ce logement ?")) return;
+        try { await deleteApartment(item.id); } catch (err) { showError(err); }
+      }},
+    }));
+  } else {
+    details.appendChild(buildTenantActionsRow(item));
+    details.appendChild(el("div", {
+      className: "apartment-card-pricing-row",
+      children: [
+        el("span", { className: "apartment-card-price",
+          children: [document.createTextNode(`${item.price} $ `), el("small", { text: "/mois" })] }),
+        el("span", { className: "chat-hint",
+          children: [iconEl("fa-solid fa-comments"), document.createTextNode(" Chat Privé")] }),
+      ],
+    }));
+    card.addEventListener("click", () =>
+      startPrivateChat({ ownerId: item.ownerId, ownerName: item.ownerName, apartmentId: item.id, apartmentTitle: item.title })
+    );
+  }
+
+  card.appendChild(details);
+  return card;
+}
+
+function buildTenantActionsRow(item) {
+  const row = el("div", { className: "tenant-actions-row" });
+  const isMyLease = item.tenantId === state.currentUser.uid;
+  const isOccupied = item.status === "Occupé";
+
+  if (!isOccupied) {
+    row.appendChild(el("button", {
+      className: "btn-action-trigger tenant-cta",
+      children: [iconEl("fa-solid fa-key"), document.createTextNode(" Louer la résidence")],
+      on: { click: async (e) => {
+        e.stopPropagation();
+        try {
+          await rentApartment(item.id);
+          alert("Votre demande de location a été transmise au propriétaire.");
+        } catch (err) { showError(err); }
+      }},
+    }));
+  } else if (isMyLease) {
+    row.appendChild(el("button", {
+      className: "btn-action-trigger danger-btn small-btn",
+      children: [iconEl("fa-solid fa-door-open"), document.createTextNode(" Partir de la résidence")],
+      on: { click: async (e) => {
+        e.stopPropagation();
+        if (!confirm("Signaler votre départ de ce logement ?")) return;
+        try {
+          await leaveApartment(item.id);
+          alert("Notification de départ envoyée avec succès.");
+        } catch (err) { showError(err); }
+      }},
+    }));
+    if (item.paymentStatus === "signale") {
+      row.appendChild(el("span", {
+        className: "status-pill declared",
+        children: [iconEl("fa-solid fa-circle-check"), document.createTextNode(" Paiement déclaré (non vérifié)")],
+      }));
+    } else if (item.paymentStatus === "confirme") {
+      row.appendChild(el("span", {
+        className: "status-pill confirmed",
+        children: [iconEl("fa-solid fa-handshake"), document.createTextNode(" Loyer confirmé par le bailleur")],
+      }));
+    } else {
+      row.appendChild(el("button", {
+        className: "btn-action-trigger warn-btn small-btn",
+        children: [iconEl("fa-solid fa-money-bill-wave"), document.createTextNode(" Signaler Loyer Payé")],
+        on: { click: async (e) => {
+          e.stopPropagation();
+          try {
+            await notifyPayment(item);
+            alert("Déclaration envoyée au bailleur. Ceci n'est pas une preuve de paiement automatique : le bailleur doit confirmer avoir réellement reçu les fonds.");
+          } catch (err) { showError(err); }
+        }},
+      }));
+    }
+  } else {
+    row.appendChild(el("span", { className: "apartment-card-badge static-badge", text: "Occupé" }));
+  }
+  return row;
+}
+
+function initAddApartmentScreen() {
+  document.getElementById("btn-back-add-appart").addEventListener("click", () => {
+    changeView("scr-owner-dashboard");
+    activateOwnerTab("apparts");
+  });
+  document.getElementById("app-type").addEventListener("change", (e) => {
+    const doorField = document.getElementById("container-app-door");
+    if (e.target.value === "Maison") {
+      doorField.style.display = "none";
+      document.getElementById("app-door").value = "";
+    } else { doorField.style.display = "block"; }
+  });
+  document.getElementById("btn-save-apartment").addEventListener("click", async () => {
+    const form = {
+      title: document.getElementById("app-title").value,
+      type: document.getElementById("app-type").value,
+      commune: document.getElementById("app-commune").value,
+      avenue: document.getElementById("app-avenue").value,
+      streetNumber: document.getElementById("app-street-number").value,
+      door: document.getElementById("app-door").value,
+      reference: document.getElementById("app-reference").value,
+      price: document.getElementById("app-price").value,
+      specs: document.getElementById("app-specs").value,
+      photo1: document.getElementById("app-photo-1").value,
+      photo2: document.getElementById("app-photo-2").value,
+      photo3: document.getElementById("app-photo-3").value,
+      photo4: document.getElementById("app-photo-4").value,
+    };
+    try {
+      await createApartment(form);
+      ["app-title","app-avenue","app-street-number","app-door","app-reference",
+       "app-price","app-specs","app-photo-1","app-photo-2","app-photo-3","app-photo-4"
+      ].forEach((id) => (document.getElementById(id).value = ""));
+      changeView("scr-owner-dashboard");
+      activateOwnerTab("apparts");
+    } catch (err) { showError(err); }
+  });
+}
+
+function initTenantDashboard() {
+  document.getElementById("nav-tab-tenant-discover").addEventListener("click", () => activateTenantTab("discover"));
+  document.getElementById("nav-tab-tenant-chats").addEventListener("click", () => activateTenantTab("chats"));
+  document.querySelectorAll('#scr-tenant-dashboard [data-action="theme"]')
+    .forEach((b) => b.addEventListener("click", toggleAppTheme));
+  document.querySelectorAll('#scr-tenant-dashboard [data-action="logout"]')
+    .forEach((b) => b.addEventListener("click", () => logoutUser()));
+}
+
+function activateTenantTab(tabName) {
+  document.querySelectorAll("#scr-tenant-dashboard .tab-navigation-item")
+    .forEach((t) => t.classList.remove("active"));
+  document.getElementById(`nav-tab-tenant-${tabName}`).classList.add("active");
+
+  const container = document.getElementById("tenant-tab-injector");
+  clear(container);
+
+  if (tabName === "discover") {
+    loadTenantReputation(container);
+    renderTenantSearchBox(container);
+    if (unsubApartments) unsubApartments();
+    unsubApartments = watchCatalog((apartments) => {
+      state.apartments = apartments;
+      renderTenantCatalog();
+    });
+  } else if (tabName === "chats") {
+    renderChatList(container);
+  }
+}
+
+function loadTenantReputation(container) {
+  getTenantRatingSummary(state.currentUser.uid)
+    .then((summary) => {
+      const card = buildRatingSummaryCard(summary, "Ma réputation locative");
+      if (container.firstChild) container.insertBefore(card, container.firstChild);
+      else container.appendChild(card);
+    })
+    .catch((err) => console.warn("Réputation indisponible :", err));
+}
+
+function renderTenantSearchBox(container) {
+  const box = el("div", { className: "search-filter-box" });
+
+  const searchInput = el("input", {
+    attrs: { type: "text", placeholder: "Rechercher par mot-clé (ex: Résidence...)" },
+  });
+  searchInput.value = state.searchQuery;
+  searchInput.addEventListener("input", (e) => {
+    state.searchQuery = e.target.value;
+    renderTenantCatalog();
+  });
+  box.appendChild(el("div", {
+    className: "form-input-container",
+    attrs: { style: "margin-bottom:0;" },
+    children: [iconEl("fa-solid fa-magnifying-glass"), searchInput],
+  }));
+
+  const typeRow = el("div", { className: "filter-tags-scroll" });
+  ["Tous", "Appartement", "Maison", "Studio"].forEach((type) => {
+    typeRow.appendChild(filterTag(type, state.filterType === type, () => {
+      state.filterType = type;
+      activateTenantTab("discover");
+    }));
+  });
+  box.appendChild(typeRow);
+
+  const communeRow = el("div", { className: "filter-tags-scroll", attrs: { style: "margin-top:5px;" } });
+  ["Toutes", "Gombe", "Ngaliema", "Limete"].forEach((commune) => {
+    const label = commune === "Toutes" ? "Toutes Communes" : commune;
+    communeRow.appendChild(filterTag(label, state.filterCommune === commune, () => {
+      state.filterCommune = commune;
+      activateTenantTab("discover");
+    }));
+  });
+  box.appendChild(communeRow);
+
+  container.appendChild(box);
+  container.appendChild(el("div", { attrs: { id: "tenant-catalog-results" } }));
+}
+
+function filterTag(label, active, onClick) {
+  return el("span", {
+    className: "filter-tag" + (active ? " active" : ""),
+    text: label, on: { click: onClick },
+  });
+}
+
+function renderTenantCatalog() {
+  const resultsBox = document.getElementById("tenant-catalog-results");
+  if (!resultsBox) return;
+  clear(resultsBox);
+
+  const filtered = filterCatalog(state.apartments);
+  if (filtered.length === 0) {
+    resultsBox.appendChild(blankSlate("fa-solid fa-house-crack",
+      "Aucun logement disponible ne correspond à vos critères."));
+    return;
+  }
+  filtered.forEach((item) => resultsBox.appendChild(buildApartmentCard(item, { mode: "tenant" })));
+}
+
+async function startPrivateChat({ ownerId, ownerName, apartmentId, apartmentTitle }) {
+  try {
+    const chatId = await getOrCreateChat({ ownerId, ownerName, apartmentId, apartmentTitle });
+    openChatRoom(chatId, { ownerName, apartmentTitle });
+  } catch (err) { showError(err); }
+}
+
+function renderChatList(container) {
+  clear(container);
+  if (unsubChats) unsubChats();
+  unsubChats = watchMyChats((chats) => {
+    state.chats = chats;
+    clear(container);
+    if (chats.length === 0) {
+      container.appendChild(blankSlate("fa-solid fa-comments", "Aucune conversation."));
+      return;
+    }
+    container.appendChild(el("div", {
+      className: "action-context-bar",
+      children: [el("span", { className: "context-title", text: "Vos Conversations" })],
+    }));
+    chats.forEach((c) => {
+      const correspondent = state.currentUser.role === "owner" ? c.tenantName : c.ownerName;
+      const item = el("div", {
+        className: "chat-list-item",
+        children: [
+          el("div", { className: "chat-avatar", text: (correspondent || "?").charAt(0) }),
+          el("div", {
+            className: "chat-info",
+            children: [
+              el("h4", { text: correspondent || "Correspondant" }),
+              el("p", { className: "chat-context", text: `Objet: ${c.context || ""}` }),
+            ],
+          }),
+          iconEl("fa-solid fa-chevron-right"),
+        ],
+        on: { click: () => openChatRoom(c.id, { ownerName: c.ownerName, apartmentTitle: c.context }) },
+      });
+      container.appendChild(item);
+    });
+  });
+}
+
+let unsubMessages = null;
+
+function openChatRoom(chatId, { apartmentTitle } = {}) {
+  state.activeChatId = chatId;
+  document.getElementById("scr-chat-room").className =
+    state.currentUser.role === "tenant" ? "screen-view tenant-theme" : "screen-view";
+  document.getElementById("chat-room-subtitle").textContent = "Bien ciblé : " + (apartmentTitle || "");
+  changeView("scr-chat-room");
+
+  if (unsubMessages) unsubMessages();
+  const container = document.getElementById("chat-messages-container");
+  unsubMessages = watchMessages(chatId, (messages) => renderMessages(container, messages));
+}
+
+function renderMessages(container, messages) {
+  clear(container);
+  messages.forEach((m) => {
+    if (m.senderId === "system") {
+      container.appendChild(el("div", { className: "system-message", text: m.text }));
+      return;
+    }
+    const isMyMsg = m.senderId === state.currentUser.uid;
+    const bubble = el("div", { className: `msg-bubble ${isMyMsg ? "outgoing" : "incoming"}` });
+    bubble.appendChild(el("span", { className: "msg-text", text: m.text }));
+    if (state.currentUser.role === "owner" && !isMyMsg) {
+      bubble.appendChild(el("span", {
+        className: "msg-share-hint",
+        children: [iconEl("fa-solid fa-share-nodes"), document.createTextNode(" Diffuser (Style WhatsApp)")],
+      }));
+      bubble.addEventListener("click", async () => {
+        const confirmed = confirm(
+          `Voulez-vous transférer ce message à la totalité de vos locataires ?\n\n"${m.text}"`
+        );
+        if (!confirmed) return;
+        try {
+          const count = await broadcastToAllTenants(m.text);
+          alert(`Message transféré avec succès dans vos ${count} canaux.`);
+        } catch (err) { showError(err); }
+      });
+    }
+    const time = m.createdAt?.toDate
+      ? m.createdAt.toDate().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      : "";
+    bubble.appendChild(el("span", { className: "msg-meta", text: time }));
+    container.appendChild(bubble);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function initChatRoom() {
+  document.getElementById("btn-back-from-chat").addEventListener("click", () => {
+    if (unsubMessages) unsubMessages();
+    if (state.currentUser.role === "owner") {
+      changeView("scr-owner-dashboard");
+      activateOwnerTab("chats");
+    } else {
+      changeView("scr-tenant-dashboard");
+      activateTenantTab("chats");
+    }
+  });
+  document.getElementById("btn-send-message").addEventListener("click", submitChatMessage);
+  document.getElementById("chat-input-field").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitChatMessage();
+  });
+}
+
+async function submitChatMessage() {
+  const input = document.getElementById("chat-input-field");
+  if (!input.value.trim() || !state.activeChatId) return;
+  const text = input.value;
+  input.value = "";
+  try { await sendMessage(state.activeChatId, text); }
+  catch (err) { showError(err); }
+}
+
+function openRatingModal(lease) {
+  const overlay = el("div", { className: "modal-overlay" });
+  const modal = el("div", { className: "modal-box" });
+  modal.appendChild(el("h3", { text: `Évaluer ${lease.tenantName || "le locataire"}` }));
+  modal.appendChild(el("p", {
+    className: "rating-scale-hint",
+    text: `Notez chaque critère de ${RATING_MIN} à ${RATING_MAX} (style /10). L'évaluation est définitive et visible par le locataire.`,
+  }));
+
+  const scoreInputs = {};
+  RATING_CRITERIA.forEach((criterion) => {
+    const valueSpan = el("span", { className: "rating-slider-value", text: `8 / ${RATING_MAX}` });
+    const range = el("input", {
+      className: "rating-range",
+      attrs: { type: "range", min: String(RATING_MIN), max: String(RATING_MAX), step: "1", value: "8" },
+    });
+    range.addEventListener("input", () => {
+      valueSpan.textContent = `${range.value} / ${RATING_MAX}`;
+    });
+    scoreInputs[criterion.key] = range;
+
+    modal.appendChild(el("div", {
+      className: "rating-slider-row",
+      children: [
+        el("label", { children: [el("span", { text: criterion.label }), valueSpan] }),
+        range,
+      ],
+    }));
+  });
+
+  const commentInput = el("textarea", {
+    attrs: { placeholder: "Commentaire (optionnel, 1000 caractères max)", rows: "3" },
+  });
+  modal.appendChild(el("div", {
+    className: "form-input-container",
+    children: [el("label", { text: "Commentaire" }), commentInput],
+  }));
+
+  const actionsRow = el("div", { className: "modal-actions" });
+  actionsRow.appendChild(el("button", {
+    className: "btn-submit-form",
+    attrs: { style: "background:var(--input-bg); color:var(--text-main);" },
+    text: "Annuler",
+    on: { click: () => overlay.remove() },
+  }));
+  actionsRow.appendChild(el("button", {
+    className: "btn-submit-form owner-theme",
+    text: "Envoyer l'évaluation",
+    on: { click: async () => {
+      const scores = {};
+      Object.entries(scoreInputs).forEach(([key, input]) => (scores[key] = input.value));
+      try {
+        await submitRating(lease, scores, commentInput.value);
+        overlay.remove();
+        alert("✅ Évaluation enregistrée. Merci de contribuer à la confiance KAZA !");
+      } catch (err) { showError(err); }
+    }},
+  }));
+  modal.appendChild(actionsRow);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+function toggleAppTheme() { document.body.classList.toggle("dark-mode"); }
+
+function initPwaInstall() {
+  const pwaBtn = document.getElementById("pwa-install-btn");
+  let pwaPrompt;
+  const isIos = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  window.addEventListener("load", () => {
+    if (isIos() && pwaBtn) pwaBtn.style.display = "block";
+  });
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    pwaPrompt = e;
+    if (pwaBtn) pwaBtn.style.display = "block";
+  });
+  if (pwaBtn) {
+    pwaBtn.addEventListener("click", async () => {
+      if (isIos()) {
+        alert("Pour installer KAZA sur iPhone :\n\n1. Cliquez sur le bouton 'Partager' en bas sur Safari.\n2. Sélectionnez 'Sur l'écran d'accueil'.");
+      } else if (pwaPrompt) {
+        pwaPrompt.prompt();
+        const { outcome } = await pwaPrompt.userChoice;
+        if (outcome === "accepted") pwaBtn.style.display = "none";
+        pwaPrompt = null;
+      }
+    });
+  }
+}
+
+
+// ===================== app.js =====================
+initRoleSelection();
+initAuthScreen();
+initOwnerDashboard();
+initAddApartmentScreen();
+initTenantDashboard();
+initChatRoom();
+initPwaInstall();
+
+let firstCheck = true;
+
+watchAuthState((profile) => {
+  if (profile) {
+    enterAppForUser(profile);
+  } else if (!firstCheck) {
+    exitAppToRoleSelect();
+  } else {
+    changeView("scr-role-select");
+  }
+  firstCheck = false;
+});
+</script>
+</body>
+</html>
