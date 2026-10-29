@@ -116,6 +116,7 @@ body { background:var(--background); color:var(--text-main); transition: backgro
 .btn-submit-form.tenant-theme { background:var(--secondary-gradient); }
 
 .bottom-navigation-bar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:var(--surface); border-top:1px solid var(--border); height:68px; display:grid; grid-template-columns:repeat(3, 1fr); align-items:center; text-align:center; box-shadow:0 -4px 16px rgba(0,0,0,0.03); z-index:999; }
+#scr-owner-dashboard .bottom-navigation-bar { grid-template-columns:repeat(4, 1fr); }
 #scr-tenant-dashboard .bottom-navigation-bar { grid-template-columns:repeat(2, 1fr); }
 .tab-navigation-item { display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; height:100%; gap:4px; }
 .tab-navigation-item i { font-size:18px; }
@@ -191,6 +192,21 @@ body { background:var(--background); color:var(--text-main); transition: backgro
 .rating-slider-value { color:var(--primary); font-weight:800; font-size:12px; background:var(--input-bg); padding:2px 8px; border-radius:8px; }
 .rating-range { width:100%; accent-color:var(--primary); height:24px; }
 .rating-given-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:12px; font-size:11px; font-weight:800; color:#fff; margin-top:8px; }
+
+.owner-publish-cta {
+  width:100%;
+  min-height:48px;
+  justify-content:center;
+  margin:0 0 18px;
+  padding:12px 16px;
+  border-radius:14px;
+  font-size:14px;
+}
+
+.tenant-management-card { padding:16px; }
+.tenant-management-card h4 { font-size:14px; margin-bottom:6px; }
+.tenant-management-card p { font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:8px; }
+.tenant-management-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 
 /* KAZA motion design: short, calm transitions that follow the existing palette. */
 :root {

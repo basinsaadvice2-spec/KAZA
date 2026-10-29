@@ -1005,6 +1005,7 @@ function buildRatingBadgeMini(average) {
 function initOwnerDashboard() {
   document.getElementById("nav-tab-owner-home").addEventListener("click", () => activateOwnerTab("home"));
   document.getElementById("nav-tab-owner-apparts").addEventListener("click", () => activateOwnerTab("apparts"));
+  document.getElementById("nav-tab-owner-tenants").addEventListener("click", () => activateOwnerTab("tenants"));
   document.getElementById("nav-tab-owner-chats").addEventListener("click", () => activateOwnerTab("chats"));
   document.querySelectorAll('#scr-owner-dashboard [data-action="theme"]')
     .forEach((b) => b.addEventListener("click", toggleAppTheme));
@@ -1025,6 +1026,7 @@ function activateOwnerTab(tabName) {
     state.apartments = apartments;
     if (tabName === "home") renderOwnerHome(container, apartments);
     if (tabName === "apparts") renderOwnerApartments(container, apartments);
+    if (tabName === "tenants") renderOwnerTenants(container, apartments);
   });
 
   if (tabName === "chats") renderChatList(container);
@@ -1032,6 +1034,12 @@ function activateOwnerTab(tabName) {
 
 async function renderOwnerHome(container, apartments) {
   clear(container);
+
+  container.appendChild(el("button", {
+    className: "btn-action-trigger owner-publish-cta",
+    children: [iconEl("fa-solid fa-plus"), document.createTextNode(" Publier un bien")],
+    on: { click: () => changeView("scr-add-appart") },
+  }));
 
   const statsRow = el("div", { className: "stats-grid-row" });
   statsRow.appendChild(kpiCard("fa-solid fa-building", "Vos Biens", apartments.length, "blue-indicator"));
@@ -1170,6 +1178,83 @@ function renderOwnerApartments(container, apartments) {
     return;
   }
   apartments.forEach((item) => container.appendChild(buildApartmentCard(item, { mode: "owner" })));
+}
+
+function renderOwnerTenants(container, apartments) {
+  clear(container);
+  container.appendChild(el("div", {
+    className: "action-context-bar",
+    children: [
+      el("span", { className: "context-title", text: "Locataires actifs" }),
+      el("button", {
+        className: "btn-action-trigger",
+        children: [iconEl("fa-solid fa-comments"), document.createTextNode(" Messages")],
+        on: { click: () => activateOwnerTab("chats") },
+      }),
+    ],
+  }));
+
+  const occupied = apartments.filter((apartment) =>
+    apartment.status === "Occupé" && typeof apartment.tenantId === "string"
+  );
+
+  if (occupied.length === 0) {
+    container.appendChild(blankSlate("fa-solid fa-users", "Aucun locataire actif pour le moment."));
+    container.appendChild(el("p", {
+      className: "muted-text",
+      text: "Quand un locataire louera l'un de vos biens, ses informations et le suivi du loyer apparaîtront ici.",
+    }));
+    return;
+  }
+
+  occupied.forEach((apartment) => {
+    const paymentLabel = apartment.paymentStatus === "signale"
+      ? "Paiement signalé : à confirmer"
+      : apartment.paymentStatus === "confirme"
+        ? "Dernier paiement confirmé"
+        : "En attente de déclaration du loyer";
+    const card = el("div", {
+      className: "surface-box tenant-management-card",
+      children: [
+        el("h4", { text: apartment.tenantName || "Locataire" }),
+        el("p", { text: apartment.title || "Logement" }),
+        el("p", { text: `${fullAddress(apartment)} · ${apartment.price} $ / mois` }),
+        el("p", { className: "muted-strong", text: paymentLabel }),
+      ],
+    });
+    const actions = el("div", { className: "tenant-management-actions" });
+
+    if (apartment.paymentStatus === "signale") {
+      actions.appendChild(el("button", {
+        className: "btn-action-trigger confirm-btn",
+        text: "Confirmer le paiement",
+        on: { click: async (event) => {
+          event.currentTarget.disabled = true;
+          try {
+            await confirmTenantPayment(apartment);
+            alert("Paiement confirmé.");
+          } catch (err) {
+            showError(err);
+          } finally {
+            event.currentTarget.disabled = false;
+          }
+        }},
+      }));
+    }
+
+    actions.appendChild(el("button", {
+      className: "btn-action-trigger",
+      children: [iconEl("fa-solid fa-comments"), document.createTextNode(" Ouvrir les messages")],
+      on: { click: () => activateOwnerTab("chats") },
+    }));
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+
+  container.appendChild(el("p", {
+    className: "muted-text",
+    text: "Les évaluations des locataires après leur départ se trouvent dans Statistiques.",
+  }));
 }
 
 function blankSlate(iconClass, text) {
