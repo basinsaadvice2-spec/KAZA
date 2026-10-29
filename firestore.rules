@@ -1,0 +1,472 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function verifiedAccount() {
+      return signedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function hasRole(role) {
+      return verifiedAccount()
+        && exists(userPath(request.auth.uid))
+        && get(userPath(request.auth.uid)).data.role == role
+        && get(userPath(request.auth.uid)).data.email == request.auth.token.email;
+    }
+
+    function isOwner() {
+      return hasRole('owner');
+    }
+
+    function isTenant() {
+      return hasRole('tenant');
+    }
+
+    function isAppUser() {
+      return isOwner() || isTenant();
+    }
+
+    function authorizationPath(email) {
+      return /databases/$(database)/documents/authorizations/$(email);
+    }
+
+    function hasActiveAuthorization(email) {
+      return exists(authorizationPath(email))
+        && get(authorizationPath(email)).data.email == email
+        && get(authorizationPath(email)).data.status == 'active'
+        && get(authorizationPath(email)).data.ownerIds is list
+        && get(authorizationPath(email)).data.ownerIds.size() > 0;
+    }
+
+    function validUserProfile(userId, role) {
+      return signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasAll(['name', 'email', 'phone', 'role', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['name', 'email', 'phone', 'role', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.role == role
+        && request.resource.data.createdAt == request.time;
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function apartmentPath(apartmentId) {
+      return /databases/$(database)/documents/apartments/$(apartmentId);
+    }
+
+    function leasePath(leaseId) {
+      return /databases/$(database)/documents/leases/$(leaseId);
+    }
+
+    function chatPath(chatId) {
+      return /databases/$(database)/documents/chats/$(chatId);
+    }
+
+    function validApartmentCreate() {
+      return request.resource.data.keys().hasAll([
+          'title', 'type', 'commune', 'avenue', 'streetNumber', 'door',
+          'reference', 'price', 'specs', 'imageUrl', 'images', 'status',
+          'ownerId', 'ownerName', 'tenantId', 'tenantName', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'title', 'type', 'commune', 'avenue', 'streetNumber', 'door',
+          'reference', 'price', 'specs', 'imageUrl', 'images', 'status',
+          'ownerId', 'ownerName', 'tenantId', 'tenantName', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.type is string
+        && request.resource.data.commune is string
+        && request.resource.data.avenue is string
+        && request.resource.data.streetNumber is string
+        && (request.resource.data.door == null || request.resource.data.door is string)
+        && request.resource.data.reference is string
+        && request.resource.data.price is number
+        && request.resource.data.price > 0
+        && request.resource.data.specs is string
+        && request.resource.data.imageUrl is string
+        && request.resource.data.imageUrl.matches('^https://.*')
+        && request.resource.data.images is list
+        && request.resource.data.images.size() >= 1
+        && request.resource.data.images.size() <= 4
+        && request.resource.data.images[0] == request.resource.data.imageUrl
+        && request.resource.data.status == 'Disponible'
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerName == get(userPath(request.auth.uid)).data.name
+        && request.resource.data.tenantId == null
+        && request.resource.data.tenantName == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function tenantRentsApartment() {
+      return isTenant()
+        && resource.data.status == 'Disponible'
+        && request.resource.data.status == 'Occupé'
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.tenantId == request.auth.uid
+        && request.resource.data.tenantName == get(userPath(request.auth.uid)).data.name
+        && request.resource.data.paymentStatus == 'en_attente'
+        && request.resource.data.updatedAt == request.time
+        && changedOnly(['status', 'tenantId', 'tenantName', 'paymentStatus', 'updatedAt']);
+    }
+
+    function tenantReportsPayment() {
+      return isTenant()
+        && resource.data.status == 'Occupé'
+        && resource.data.tenantId == request.auth.uid
+        && (resource.data.paymentStatus == 'en_attente' || resource.data.paymentStatus == 'signale')
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.paymentStatus == 'signale'
+        && request.resource.data.updatedAt == request.time
+        && changedOnly(['paymentStatus', 'updatedAt']);
+    }
+
+    function ownerConfirmsPayment() {
+      return isOwner()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.status == 'Occupé'
+        && resource.data.tenantId is string
+        && resource.data.paymentStatus == 'signale'
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.paymentStatus == 'confirme'
+        && request.resource.data.updatedAt == request.time
+        && changedOnly(['paymentStatus', 'updatedAt']);
+    }
+
+    function tenantLeavesApartment() {
+      return isTenant()
+        && resource.data.status == 'Occupé'
+        && resource.data.tenantId == request.auth.uid
+        && request.resource.data.status == 'Disponible'
+        && request.resource.data.tenantId == null
+        && request.resource.data.tenantName == null
+        && request.resource.data.paymentStatus == null
+        && request.resource.data.updatedAt == request.time
+        && changedOnly(['status', 'tenantId', 'tenantName', 'paymentStatus', 'updatedAt']);
+    }
+
+    function validLeaseCreate(leaseId) {
+      let path = apartmentPath(request.resource.data.apartmentId);
+      return isTenant()
+        && request.resource.data.keys().hasAll([
+          'apartmentId', 'ownerId', 'tenantId', 'tenantName', 'tenantPhone',
+          'status', 'paymentStatus', 'startDate', 'endDate'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'apartmentId', 'ownerId', 'tenantId', 'tenantName', 'tenantPhone',
+          'status', 'paymentStatus', 'startDate', 'endDate'
+        ])
+        && request.resource.data.apartmentId is string
+        && request.resource.data.ownerId is string
+        && request.resource.data.tenantId == request.auth.uid
+        && request.resource.data.tenantName == get(userPath(request.auth.uid)).data.name
+        && request.resource.data.tenantPhone == get(userPath(request.auth.uid)).data.phone
+        && request.resource.data.status == 'active'
+        && request.resource.data.paymentStatus == 'en_attente'
+        && request.resource.data.startDate == request.time
+        && request.resource.data.endDate == null
+        && existsAfter(path)
+        && getAfter(path).data.ownerId == request.resource.data.ownerId
+        && getAfter(path).data.status == 'Occupé'
+        && getAfter(path).data.tenantId == request.auth.uid;
+    }
+
+    function tenantEndsLease() {
+      let path = apartmentPath(resource.data.apartmentId);
+      return isTenant()
+        && resource.data.tenantId == request.auth.uid
+        && resource.data.status == 'active'
+        && request.resource.data.status == 'ended'
+        && request.resource.data.endDate == request.time
+        && changedOnly(['status', 'endDate'])
+        && existsAfter(path)
+        && getAfter(path).data.status == 'Disponible'
+        && getAfter(path).data.tenantId == null;
+    }
+
+    function tenantReportsLeasePayment() {
+      let path = apartmentPath(resource.data.apartmentId);
+      return isTenant()
+        && resource.data.tenantId == request.auth.uid
+        && resource.data.status == 'active'
+        && (resource.data.paymentStatus == 'en_attente' || resource.data.paymentStatus == 'signale')
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.paymentStatus == 'signale'
+        && changedOnly(['paymentStatus'])
+        && existsAfter(path)
+        && getAfter(path).data.tenantId == request.auth.uid
+        && getAfter(path).data.paymentStatus == 'signale';
+    }
+
+    function ownerConfirmsLeasePayment() {
+      let path = apartmentPath(resource.data.apartmentId);
+      return isOwner()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.status == 'active'
+        && resource.data.paymentStatus == 'signale'
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.paymentStatus == 'confirme'
+        && changedOnly(['paymentStatus'])
+        && existsAfter(path)
+        && getAfter(path).data.ownerId == request.auth.uid
+        && getAfter(path).data.tenantId == resource.data.tenantId
+        && getAfter(path).data.paymentStatus == 'confirme';
+    }
+
+    function validRatingCreate(leaseId) {
+      let path = leasePath(leaseId);
+      return isOwner()
+        && request.resource.data.keys().hasAll([
+          'leaseId', 'ownerId', 'ownerName', 'tenantId', 'tenantName',
+          'apartmentId', 'scores', 'average', 'max', 'comment', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'leaseId', 'ownerId', 'ownerName', 'tenantId', 'tenantName',
+          'apartmentId', 'scores', 'average', 'max', 'comment', 'status', 'createdAt'
+        ])
+        && request.resource.data.leaseId == leaseId
+        && exists(path)
+        && get(path).data.ownerId == request.auth.uid
+        && get(path).data.status == 'ended'
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerName == get(userPath(request.auth.uid)).data.name
+        && request.resource.data.tenantId == get(path).data.tenantId
+        && request.resource.data.tenantName == get(path).data.tenantName
+        && request.resource.data.apartmentId == get(path).data.apartmentId
+        && request.resource.data.scores is map
+        && request.resource.data.scores.keys().hasAll([
+          'capacitePaiement', 'ponctualite', 'entretien', 'etatSortie',
+          'communication', 'respectReglement', 'respectVoisinage', 'fiabilite'
+        ])
+        && request.resource.data.scores.keys().hasOnly([
+          'capacitePaiement', 'ponctualite', 'entretien', 'etatSortie',
+          'communication', 'respectReglement', 'respectVoisinage', 'fiabilite'
+        ])
+        && request.resource.data.scores.capacitePaiement is number
+        && request.resource.data.scores.capacitePaiement >= 1
+        && request.resource.data.scores.capacitePaiement <= 10
+        && request.resource.data.scores.ponctualite is number
+        && request.resource.data.scores.ponctualite >= 1
+        && request.resource.data.scores.ponctualite <= 10
+        && request.resource.data.scores.entretien is number
+        && request.resource.data.scores.entretien >= 1
+        && request.resource.data.scores.entretien <= 10
+        && request.resource.data.scores.etatSortie is number
+        && request.resource.data.scores.etatSortie >= 1
+        && request.resource.data.scores.etatSortie <= 10
+        && request.resource.data.scores.communication is number
+        && request.resource.data.scores.communication >= 1
+        && request.resource.data.scores.communication <= 10
+        && request.resource.data.scores.respectReglement is number
+        && request.resource.data.scores.respectReglement >= 1
+        && request.resource.data.scores.respectReglement <= 10
+        && request.resource.data.scores.respectVoisinage is number
+        && request.resource.data.scores.respectVoisinage >= 1
+        && request.resource.data.scores.respectVoisinage <= 10
+        && request.resource.data.scores.fiabilite is number
+        && request.resource.data.scores.fiabilite >= 1
+        && request.resource.data.scores.fiabilite <= 10
+        && request.resource.data.average is number
+        && request.resource.data.average >= 1
+        && request.resource.data.average <= 10
+        && request.resource.data.max == 10
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 1000
+        && request.resource.data.status == 'published'
+        && request.resource.data.createdAt == request.time;
+    }
+
+    function validChatCreate(chatId) {
+      let path = apartmentPath(request.resource.data.apartmentId);
+      return isTenant()
+        && request.resource.data.keys().hasAll([
+          'participantIds', 'ownerId', 'ownerName', 'tenantId', 'tenantName',
+          'apartmentId', 'context', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'participantIds', 'ownerId', 'ownerName', 'tenantId', 'tenantName',
+          'apartmentId', 'context', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.ownerId is string
+        && request.resource.data.ownerId != request.auth.uid
+        && request.resource.data.tenantId == request.auth.uid
+        && chatId == request.auth.uid + '_' + request.resource.data.ownerId
+        && request.resource.data.participantIds == [request.resource.data.ownerId, request.auth.uid]
+        && request.resource.data.ownerName == get(userPath(request.resource.data.ownerId)).data.name
+        && request.resource.data.tenantName == get(userPath(request.auth.uid)).data.name
+        && request.resource.data.apartmentId is string
+        && exists(path)
+        && get(path).data.ownerId == request.resource.data.ownerId
+        && (get(path).data.status == 'Disponible' || get(path).data.tenantId == request.auth.uid)
+        && request.resource.data.context is string
+        && request.resource.data.context.size() <= 200
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isChatParticipant(chatId) {
+      return isAppUser()
+        && exists(chatPath(chatId))
+        && get(chatPath(chatId)).data.participantIds is list
+        && get(chatPath(chatId)).data.participantIds.hasAny([request.auth.uid])
+        && (
+          get(chatPath(chatId)).data.ownerId == request.auth.uid
+          || get(chatPath(chatId)).data.tenantId == request.auth.uid
+        );
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if validUserProfile(userId, 'owner')
+        || (validUserProfile(userId, 'tenant')
+          && hasActiveAuthorization(request.auth.token.email));
+      allow update, delete: if false;
+
+      match /notificationTokens/{tokenId} {
+        allow create, update: if isAppUser()
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasAll(['token', 'platform', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['token', 'platform', 'createdAt'])
+          && request.resource.data.token is string
+          && request.resource.data.token.size() <= 4096
+          && request.resource.data.platform is string
+          && request.resource.data.platform.size() <= 100
+          && request.resource.data.createdAt == request.time;
+        allow delete: if isAppUser() && request.auth.uid == userId;
+      }
+    }
+
+    match /authorizations/{email} {
+      allow get, list: if (
+          isOwner()
+          && resource.data.ownerIds is list
+          && resource.data.ownerIds.hasAny([request.auth.uid])
+        ) || (
+          signedIn()
+          && request.auth.token.email == resource.data.email
+          && resource.data.status == 'active'
+        );
+
+      allow create: if isOwner()
+        && request.resource.data.keys().hasAll(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.email == email
+        && request.resource.data.ownerIds is list
+        && request.resource.data.ownerIds.size() == 1
+        && request.resource.data.ownerIds.hasAny([request.auth.uid])
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isOwner()
+        && resource.data.email == email
+        && request.resource.data.keys().hasAll(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.email == email
+        && request.resource.data.ownerIds is list
+        && request.resource.data.ownerIds.hasAll(resource.data.ownerIds)
+        && request.resource.data.ownerIds.hasAny([request.auth.uid])
+        && request.resource.data.ownerIds.size() <= resource.data.ownerIds.size() + 1
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /apartments/{apartmentId} {
+      allow get, list: if (
+          isOwner() && resource.data.ownerId == request.auth.uid
+        ) || (
+          isTenant()
+          && (
+            resource.data.status == 'Disponible'
+            || resource.data.tenantId == request.auth.uid
+          )
+        );
+
+      allow create: if isOwner() && validApartmentCreate();
+
+      allow update: if tenantRentsApartment()
+        || tenantReportsPayment()
+        || ownerConfirmsPayment()
+        || tenantLeavesApartment();
+
+      allow delete: if isOwner()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.tenantId == null;
+    }
+
+    match /leases/{leaseId} {
+      allow get, list: if (
+          isOwner() && resource.data.ownerId == request.auth.uid
+        ) || (
+          isTenant() && resource.data.tenantId == request.auth.uid
+        );
+
+      allow create: if validLeaseCreate(leaseId);
+      allow update: if tenantEndsLease()
+        || tenantReportsLeasePayment()
+        || ownerConfirmsLeasePayment();
+      allow delete: if false;
+    }
+
+    match /ratings/{leaseId} {
+      allow get: if (
+          isOwner() && resource.data.ownerId == request.auth.uid
+        ) || (
+          isTenant() && resource.data.tenantId == request.auth.uid
+        );
+      allow list: if isTenant()
+        && resource.data.tenantId == request.auth.uid
+        && resource.data.status == 'published';
+      allow create: if validRatingCreate(leaseId);
+      allow update, delete: if false;
+    }
+
+    match /chats/{chatId} {
+      allow get, list: if isAppUser()
+        && resource.data.participantIds is list
+        && resource.data.participantIds.hasAny([request.auth.uid])
+        && (
+          resource.data.ownerId == request.auth.uid
+          || resource.data.tenantId == request.auth.uid
+        );
+      allow create: if validChatCreate(chatId);
+      allow update, delete: if false;
+
+      match /messages/{messageId} {
+        allow get, list: if isChatParticipant(chatId);
+        allow create: if isChatParticipant(chatId)
+          && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
