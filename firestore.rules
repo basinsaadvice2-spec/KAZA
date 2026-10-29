@@ -195,7 +195,6 @@ service cloud.firestore {
       return isTenant()
         && resource.data.tenantId == request.auth.uid
         && resource.data.status == 'active'
-        && (resource.data.paymentStatus == 'en_attente' || resource.data.paymentStatus == 'signale')
         && request.resource.data.status == 'ended'
         && request.resource.data.endDate == request.time
         && changedOnly(['status', 'endDate'])
@@ -209,6 +208,7 @@ service cloud.firestore {
       return isTenant()
         && resource.data.tenantId == request.auth.uid
         && resource.data.status == 'active'
+        && (resource.data.paymentStatus == 'en_attente' || resource.data.paymentStatus == 'signale')
         && request.resource.data.status == resource.data.status
         && request.resource.data.paymentStatus == 'signale'
         && changedOnly(['paymentStatus'])
