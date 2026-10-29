@@ -360,11 +360,11 @@ body { background:var(--background); color:var(--text-main); transition: backgro
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { browserLocalPersistence, createUserWithEmailAndPassword, deleteUser, getAuth, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
+import { browserLocalPersistence, createUserWithEmailAndPassword, deleteUser, getAuth, onAuthStateChanged, sendEmailVerification, setPersistence, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import { addDoc, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-// ===================== firebase-init.js =====================
+// Public Firebase web configuration. Firebase client API keys identify the project;
+// Firestore Rules and App Check (when configured) control access.
 const firebaseConfig = {
   apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
   authDomain: "kaza-bf0dc.firebaseapp.com",
@@ -378,7 +378,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.error("Impossible de configurer la persistance Auth :", err);
@@ -463,10 +462,15 @@ function iconEl(faClass, extraStyle) {
 }
 
 // ===================== auth.js =====================
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
 async function isTenantEmailAuthorized(email) {
+  const cleanEmail = normalizeEmail(email);
   const q = query(
     collection(db, "authorizations"),
-    where("email", "==", email),
+    where("email", "==", cleanEmail),
     where("status", "==", "active"),
     limit(1)
   );
@@ -474,22 +478,35 @@ async function isTenantEmailAuthorized(email) {
   return !snap.empty;
 }
 
-let registrationInFlight = false;
+let authFlowInFlight = false;
 
-async function withRegistrationGuard(fn) {
-  registrationInFlight = true;
+async function withAuthFlow(fn) {
+  authFlowInFlight = true;
   try { return await fn(); }
-  finally { registrationInFlight = false; }
+  finally { authFlowInFlight = false; }
 }
 
-function isRegistrationInFlight() { return registrationInFlight; }
+function buildUserProfile(user, role, name = "", phone = "") {
+  return {
+    name: name || (role === "owner" ? "Bailleur KAZA" : "Locataire KAZA"),
+    email: normalizeEmail(user.email),
+    phone: phone || "",
+    role,
+    createdAt: serverTimestamp(),
+  };
+}
+
 async function registerUser({ role, name, email, phone, password }) {
-  return withRegistrationGuard(async () => {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+  return withAuthFlow(async () => {
+    const cleanEmail = normalizeEmail(email);
+    if (role !== "owner" && role !== "tenant") {
+      throw new Error("Type de compte invalide.");
+    }
+    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     const user = cred.user;
 
     if (role === "tenant") {
-      const authorized = await isTenantEmailAuthorized(email);
+      const authorized = await isTenantEmailAuthorized(cleanEmail);
       if (!authorized) {
         await deleteUser(user).catch((e) =>
           console.error("Nettoyage du compte non autorisé impossible :", e)
@@ -500,22 +517,72 @@ async function registerUser({ role, name, email, phone, password }) {
       }
     }
 
-    const profile = {
-      name: name || (role === "owner" ? "Bailleur KAZA" : "Locataire KAZA"),
-      email,
-      phone: phone || "",
-      role,
-      createdAt: serverTimestamp(),
-    };
-    await setDoc(doc(db, "users", user.uid), profile);
-    state.currentUser = { uid: user.uid, ...profile };
-    return state.currentUser;
+    const profile = buildUserProfile(user, role, name, phone);
+    try {
+      await setDoc(doc(db, "users", user.uid), profile);
+    } catch (err) {
+      await deleteUser(user).catch((cleanupError) =>
+        console.error("Nettoyage du compte incomplet impossible :", cleanupError)
+      );
+      throw err;
+    }
+
+    try {
+      await sendEmailVerification(user);
+    } catch (err) {
+      await signOut(auth).catch(() => {});
+      resetStateOnSignOut();
+      throw new Error("Le compte a été créé, mais l'envoi du lien de vérification a échoué. Connectez-vous pour réessayer.");
+    }
+    await signOut(auth);
+    resetStateOnSignOut();
+    return { requiresEmailVerification: true };
   });
 }
 
-async function loginUser({ email, password }) {
-  const cred = await signInWithEmailAndPassword(auth, email, password);
-  return loadUserProfile(cred.user.uid);
+async function loginUser({ role, email, password }) {
+  return withAuthFlow(async () => {
+    const cleanEmail = normalizeEmail(email);
+    const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    const user = cred.user;
+
+    if (!user.emailVerified) {
+      await sendEmailVerification(user).catch(() => {});
+      await signOut(auth).catch(() => {});
+      resetStateOnSignOut();
+      throw new Error("Votre adresse e-mail n'est pas encore vérifiée. Nous vous avons renvoyé le lien de vérification.");
+    }
+
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    let profile;
+    if (snap.exists()) {
+      profile = { uid: user.uid, ...snap.data() };
+      if (profile.role !== role) {
+        await signOut(auth).catch(() => {});
+        resetStateOnSignOut();
+        throw new Error("Ce compte est enregistré avec un autre profil. Choisissez le bon type de compte.");
+      }
+    } else {
+      if (role === "tenant" && !(await isTenantEmailAuthorized(cleanEmail))) {
+        await signOut(auth).catch(() => {});
+        resetStateOnSignOut();
+        throw new Error("Cette adresse e-mail n'a pas encore été autorisée par un bailleur sur KAZA.");
+      }
+      profile = buildUserProfile(user, role);
+      try {
+        await setDoc(userRef, profile);
+      } catch (err) {
+        await signOut(auth).catch(() => {});
+        resetStateOnSignOut();
+        throw err;
+      }
+      profile = { uid: user.uid, ...profile };
+    }
+
+    state.currentUser = profile;
+    return profile;
+  });
 }
 
 async function loadUserProfile(uid) {
@@ -533,8 +600,12 @@ async function logoutUser() {
 
 function watchAuthState(onReady) {
   return onAuthStateChanged(auth, async (user) => {
-    if (registrationInFlight) return;
+    if (authFlowInFlight) return;
     if (!user) { resetStateOnSignOut(); onReady(null); return; }
+    if (!user.emailVerified) {
+      await signOut(auth).catch(() => {});
+      return;
+    }
     try {
       const profile = await loadUserProfile(user.uid);
       state.currentUser = profile;
@@ -554,12 +625,25 @@ async function authorizeTenantEmail(email) {
   if (!cleanEmail || !cleanEmail.includes("@")) {
     throw new Error("Veuillez saisir un email valide.");
   }
-  await addDoc(collection(db, "authorizations"), {
-    ownerId: state.currentUser.uid,
-    email: cleanEmail,
-    status: "active",
-    createdAt: serverTimestamp(),
-  });
+  if (state.currentUser?.role !== "owner") {
+    throw new Error("Seul un bailleur peut autoriser un locataire.");
+  }
+  const authorizationRef = doc(db, "authorizations", cleanEmail);
+  const authorization = await getDoc(authorizationRef);
+  if (authorization.exists()) {
+    await updateDoc(authorizationRef, {
+      ownerIds: arrayUnion(state.currentUser.uid),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    await setDoc(authorizationRef, {
+      email: cleanEmail,
+      ownerIds: [state.currentUser.uid],
+      status: "active",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
   return cleanEmail;
 }
 // ===================== apartments.js =====================
@@ -634,10 +718,50 @@ function watchOwnerApartments(ownerId, callback) {
 }
 
 function watchCatalog(callback) {
-  const q = query(collection(db, "apartments"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+  let availableApartments = [];
+  let tenantApartments = [];
+  let availableReady = false;
+  let tenantReady = state.currentUser.role !== "tenant";
+
+  function publishCatalog() {
+    if (!availableReady || !tenantReady) return;
+    const combined = new Map();
+    [...availableApartments, ...tenantApartments].forEach((apartment) => {
+      combined.set(apartment.id, apartment);
+    });
+    const sorted = [...combined.values()].sort((left, right) =>
+      (right.createdAt?.seconds || 0) - (left.createdAt?.seconds || 0)
+    );
+    callback(sorted);
+  }
+
+  const availableQuery = query(
+    collection(db, "apartments"),
+    where("status", "==", "Disponible")
+  );
+  const unsubscribeAvailable = onSnapshot(availableQuery, (snap) => {
+    availableApartments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    availableReady = true;
+    publishCatalog();
+  }, (err) => console.error("Catalogue KAZA indisponible :", err));
+
+  let unsubscribeTenant = () => {};
+  if (state.currentUser.role === "tenant") {
+    const tenantQuery = query(
+      collection(db, "apartments"),
+      where("tenantId", "==", state.currentUser.uid)
+    );
+    unsubscribeTenant = onSnapshot(tenantQuery, (snap) => {
+      tenantApartments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      tenantReady = true;
+      publishCatalog();
+    }, (err) => console.error("Logements du locataire indisponibles :", err));
+  }
+
+  return () => {
+    unsubscribeAvailable();
+    unsubscribeTenant();
+  };
 }
 
 function filterCatalog(apartments) {
@@ -655,8 +779,11 @@ function filterCatalog(apartments) {
 // ===================== leases.js =====================
 async function rentApartment(apartmentId) {
   const apartmentRef = doc(db, "apartments", apartmentId);
+  const leaseRef = doc(collection(db, "leases"));
   const tenant = state.currentUser;
   let ownerId;
+  let ownerName;
+  let apartmentTitle;
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(apartmentRef);
@@ -666,23 +793,24 @@ async function rentApartment(apartmentId) {
       throw new Error("Trop tard : ce logement vient d'être loué par quelqu'un d'autre.");
     }
     ownerId = data.ownerId;
+    ownerName = data.ownerName || "";
+    apartmentTitle = data.title || "";
     tx.update(apartmentRef, {
       status: "Occupé",
       tenantId: tenant.uid, tenantName: tenant.name,
       paymentStatus: "en_attente",
       updatedAt: serverTimestamp(),
     });
+    tx.set(leaseRef, {
+      apartmentId, ownerId,
+      tenantId: tenant.uid, tenantName: tenant.name,
+      tenantPhone: tenant.phone || "",
+      status: "active", paymentStatus: "en_attente",
+      startDate: serverTimestamp(), endDate: null,
+    });
   });
 
-  const leaseRef = await addDoc(collection(db, "leases"), {
-    apartmentId, ownerId,
-    tenantId: tenant.uid, tenantName: tenant.name,
-    tenantPhone: tenant.phone || "",
-    status: "active", paymentStatus: "en_attente",
-    startDate: serverTimestamp(), endDate: null,
-  });
-
-  const chatId = await getOrCreateChat({ ownerId, apartmentId });
+  const chatId = await getOrCreateChat({ ownerId, ownerName, apartmentId, apartmentTitle });
   await postSystemMessage(
     chatId,
     `🚨 NOTIFICATION : Le locataire ${tenant.name} (${tenant.phone || "pas de numéro"}) demande à louer votre résidence.`
@@ -692,36 +820,45 @@ async function rentApartment(apartmentId) {
 async function leaveApartment(apartmentId) {
   const apartmentRef = doc(db, "apartments", apartmentId);
   const tenant = state.currentUser;
-  let ownerId; let leaseId = null;
+  const activeLease = await getActiveLease(apartmentId, tenant.uid);
+  if (!activeLease) {
+    throw new Error("Le contrat actif de ce logement est introuvable. Contactez le bailleur.");
+  }
+  const leaseRef = doc(db, "leases", activeLease.id);
+  let ownerId; let ownerName; let apartmentTitle;
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(apartmentRef);
+    const leaseSnap = await tx.get(leaseRef);
     if (!snap.exists()) throw new Error("Ce logement n'existe plus.");
+    if (!leaseSnap.exists() || leaseSnap.data().status !== "active") {
+      throw new Error("Le contrat de location n'est plus actif.");
+    }
     const data = snap.data();
     if (data.tenantId !== tenant.uid) {
       throw new Error("Vous n'êtes pas le locataire actuel de ce bien.");
     }
+    if (leaseSnap.data().tenantId !== tenant.uid || leaseSnap.data().apartmentId !== apartmentId) {
+      throw new Error("Le contrat ne correspond pas à ce logement.");
+    }
     ownerId = data.ownerId;
+    ownerName = data.ownerName || "";
+    apartmentTitle = data.title || "";
     tx.update(apartmentRef, {
       status: "Disponible", tenantId: null, tenantName: null,
       paymentStatus: null, updatedAt: serverTimestamp(),
     });
-  });
-
-  const activeLease = await getActiveLease(apartmentId, tenant.uid);
-  if (activeLease) {
-    leaseId = activeLease.id;
-    await updateDoc(doc(db, "leases", leaseId), {
+    tx.update(leaseRef, {
       status: "ended", endDate: serverTimestamp(),
     });
-  }
+  });
 
-  const chatId = await getOrCreateChat({ ownerId, apartmentId });
+  const chatId = await getOrCreateChat({ ownerId, ownerName, apartmentId, apartmentTitle });
   await postSystemMessage(
     chatId,
     `📭 NOTIFICATION DE DÉPART : Le locataire ${tenant.name} a libéré votre résidence.`
   );
-  return leaseId;
+  return activeLease.id;
 }
 
 async function getActiveLease(apartmentId, tenantId) {
@@ -740,9 +877,12 @@ async function getActiveLease(apartmentId, tenantId) {
 
 // ===================== payments.js =====================
 async function findActiveLease(apartmentId) {
+  const { role, uid } = state.currentUser;
+  const partyField = role === "owner" ? "ownerId" : "tenantId";
   const q = query(
     collection(db, "leases"),
     where("apartmentId", "==", apartmentId),
+    where(partyField, "==", uid),
     where("status", "==", "active")
   );
   const snap = await getDocs(q);
@@ -752,33 +892,65 @@ async function findActiveLease(apartmentId) {
 }
 
 async function notifyPayment(apartment) {
-  await updateDoc(doc(db, "apartments", apartment.id), {
-    paymentStatus: "signale", updatedAt: serverTimestamp(),
-  });
   const lease = await findActiveLease(apartment.id);
-  if (lease) {
-    await updateDoc(doc(db, "leases", lease.id), { paymentStatus: "signale" });
-  }
+  if (!lease) throw new Error("Aucun contrat actif trouvé pour ce logement.");
+  const apartmentRef = doc(db, "apartments", apartment.id);
+  const leaseRef = doc(db, "leases", lease.id);
+  await runTransaction(db, async (tx) => {
+    const apartmentSnap = await tx.get(apartmentRef);
+    const leaseSnap = await tx.get(leaseRef);
+    if (!apartmentSnap.exists() || !leaseSnap.exists()) {
+      throw new Error("Le contrat ou le logement n'existe plus.");
+    }
+    if (apartmentSnap.data().status !== "Occupé"
+      || apartmentSnap.data().tenantId !== state.currentUser.uid
+      || leaseSnap.data().apartmentId !== apartment.id
+      || leaseSnap.data().tenantId !== state.currentUser.uid
+      || leaseSnap.data().status !== "active") {
+      throw new Error("Ce contrat n'est pas associé à votre compte.");
+    }
+    tx.update(apartmentRef, { paymentStatus: "signale", updatedAt: serverTimestamp() });
+    tx.update(leaseRef, { paymentStatus: "signale" });
+  });
   const chatId = await getOrCreateChat({
-    ownerId: apartment.ownerId, apartmentId: apartment.id, apartmentTitle: apartment.title,
+    ownerId: apartment.ownerId, ownerName: apartment.ownerName,
+    apartmentId: apartment.id, apartmentTitle: apartment.title,
   });
   await postSystemMessage(
     chatId,
-    `💰 LOGISTIQUE PAIEMENT : Le locataire ${state.currentUser.name} déclare avoir réglé le loyer de ${apartment.price} $ (déclaration non vérifiée, en attente de confirmation du bailleur).`
+    "💰 LOGISTIQUE PAIEMENT : Le locataire " + state.currentUser.name
+      + " déclare avoir réglé le loyer de " + apartment.price
+      + " $ (déclaration non vérifiée, en attente de confirmation du bailleur)."
   );
 }
 
 async function confirmTenantPayment(apartment) {
-  await updateDoc(doc(db, "apartments", apartment.id), {
-    paymentStatus: "confirme", updatedAt: serverTimestamp(),
-  });
   const lease = await findActiveLease(apartment.id);
-  if (lease) {
-    await updateDoc(doc(db, "leases", lease.id), { paymentStatus: "confirme" });
-  }
-  const chatId = await getOrCreateChat({
-    ownerId: state.currentUser.uid, apartmentId: apartment.id, apartmentTitle: apartment.title,
+  if (!lease) throw new Error("Aucun contrat actif trouvé pour ce logement.");
+  const apartmentRef = doc(db, "apartments", apartment.id);
+  const leaseRef = doc(db, "leases", lease.id);
+  await runTransaction(db, async (tx) => {
+    const apartmentSnap = await tx.get(apartmentRef);
+    const leaseSnap = await tx.get(leaseRef);
+    if (!apartmentSnap.exists() || !leaseSnap.exists()) {
+      throw new Error("Le contrat ou le logement n'existe plus.");
+    }
+    if (apartmentSnap.data().status !== "Occupé"
+      || apartmentSnap.data().ownerId !== state.currentUser.uid
+      || apartmentSnap.data().tenantId !== leaseSnap.data().tenantId
+      || leaseSnap.data().apartmentId !== apartment.id
+      || leaseSnap.data().ownerId !== state.currentUser.uid
+      || leaseSnap.data().status !== "active") {
+      throw new Error("Ce contrat n'est pas associé à votre compte.");
+    }
+    tx.update(apartmentRef, { paymentStatus: "confirme", updatedAt: serverTimestamp() });
+    tx.update(leaseRef, { paymentStatus: "confirme" });
   });
+  const tenantId = lease.tenantId;
+  if (!tenantId) {
+    throw new Error("Aucun locataire actif n'est associé à ce logement.");
+  }
+  const chatId = buildChatId(apartment.ownerId, tenantId);
   await postSystemMessage(
     chatId,
     "✅ PAIEMENT CONFIRMÉ : le bailleur a validé la réception du loyer pour ce mois."
@@ -911,7 +1083,7 @@ async function getOrCreateChat({ ownerId, apartmentId, ownerName, apartmentTitle
 
 async function postSystemMessage(chatId, text) {
   await addDoc(collection(db, "chats", chatId, "messages"), {
-    senderId: "system", text, createdAt: serverTimestamp(),
+    senderId: state.currentUser.uid, text, createdAt: serverTimestamp(),
   });
 }
 
@@ -926,16 +1098,17 @@ async function sendMessage(chatId, text) {
 
 async function broadcastToAllTenants(text) {
   const owner = state.currentUser;
+  const broadcastText = ("[Diffusion Groupée] : " + String(text).trim()).slice(0, 2000);
   const q = query(collection(db, "chats"), where("ownerId", "==", owner.uid));
   const snap = await getDocs(q);
   const chats = snap.docs;
-  for (let i = 0; i < chats.length; i += 450) {
+  for (let i = 0; i < chats.length; i += 8) {
     const batch = writeBatch(db);
-    chats.slice(i, i + 450).forEach((chatDoc) => {
+    chats.slice(i, i + 8).forEach((chatDoc) => {
       const messageRef = doc(collection(db, "chats", chatDoc.id, "messages"));
       batch.set(messageRef, {
         senderId: owner.uid,
-        text: `[Diffusion Groupée] : ${text}`,
+        text: broadcastText,
         createdAt: serverTimestamp(),
       });
     });
@@ -968,6 +1141,7 @@ function watchMessages(chatId, callback) {
 const VAPID_KEY = "VAPID_KEY_A_CONFIGURER";
 
 async function requestNotificationPermission() {
+  if (!VAPID_KEY || VAPID_KEY === "VAPID_KEY_A_CONFIGURER") return null;
   if (!("Notification" in window)) return null;
   const messagingContext = await getMessagingIfSupported();
   if (!messagingContext) return null;
@@ -1052,10 +1226,14 @@ async function submitAuthForm() {
 
   try {
     if (state.authMode === "register") {
-      const profile = await registerUser({ role: state.pendingRole, name, email, phone, password });
-      enterAppForUser(profile);
+      const result = await registerUser({ role: state.pendingRole, name, email, phone, password });
+      if (result?.requiresEmailVerification) {
+        toggleAuthMode();
+        alert("Compte créé. Vérifiez le lien envoyé par e-mail, puis connectez-vous avec le même profil.");
+      }
     } else {
-      await loginUser({ email, password });
+      const profile = await loginUser({ role: state.pendingRole, email, password });
+      enterAppForUser(profile);
     }
   } catch (err) { showError(err); }
   finally { submitBtn.disabled = false; submitBtn.textContent = "Continuer"; }
@@ -1721,10 +1899,6 @@ function openChatRoom(chatId, { apartmentTitle } = {}) {
 function renderMessages(container, messages) {
   clear(container);
   messages.forEach((m) => {
-    if (m.senderId === "system") {
-      container.appendChild(el("div", { className: "system-message", text: m.text }));
-      return;
-    }
     const isMyMsg = m.senderId === state.currentUser.uid;
     const bubble = el("div", { className: `msg-bubble ${isMyMsg ? "outgoing" : "incoming"}` });
     bubble.appendChild(el("span", { className: "msg-text", text: m.text }));
