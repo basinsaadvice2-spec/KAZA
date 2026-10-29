@@ -191,3 +191,176 @@ body { background:var(--background); color:var(--text-main); transition: backgro
 .rating-slider-value { color:var(--primary); font-weight:800; font-size:12px; background:var(--input-bg); padding:2px 8px; border-radius:8px; }
 .rating-range { width:100%; accent-color:var(--primary); height:24px; }
 .rating-given-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:12px; font-size:11px; font-weight:800; color:#fff; margin-top:8px; }
+
+/* KAZA motion design: short, calm transitions that follow the existing palette. */
+:root {
+  --motion-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+  --motion-fast: 180ms;
+  --motion-normal: 360ms;
+}
+
+@keyframes kaza-screen-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes kaza-rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kaza-brand-in {
+  0% { opacity: 0; transform: translateY(10px) scale(0.96); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.015); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes kaza-icon-in {
+  0% { opacity: 0; transform: scale(0.78) rotate(-7deg); }
+  75% { opacity: 1; transform: scale(1.06) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.screen-view.active {
+  animation: kaza-screen-enter var(--motion-normal) var(--motion-ease) both;
+}
+
+#scr-role-select.active .app-brand-logo {
+  animation: kaza-brand-in 520ms var(--motion-ease) both;
+}
+
+#scr-role-select.active .app-brand-tagline {
+  animation: kaza-rise-in 420ms var(--motion-ease) 70ms both;
+}
+
+#scr-role-select.active .role-interactive-card {
+  animation: kaza-rise-in 480ms var(--motion-ease) both;
+  transition: transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) ease;
+}
+
+#scr-role-select.active .role-interactive-card:nth-of-type(1) { animation-delay: 130ms; }
+#scr-role-select.active .role-interactive-card:nth-of-type(2) { animation-delay: 210ms; }
+
+#scr-role-select.active .role-card-icon {
+  animation: kaza-icon-in 460ms var(--motion-ease) 170ms both;
+}
+
+.surface-box,
+.stats-kpi-card,
+.revenue-box,
+.apartment-card-ui,
+.search-filter-box,
+.rating-summary-card,
+.chat-list-item {
+  animation: kaza-rise-in 380ms var(--motion-ease) both;
+  transition: transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) ease;
+}
+
+.form-input-container input,
+.form-input-container select,
+.form-input-container textarea,
+.inline-form-row input,
+.chat-input-row {
+  transition: border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
+}
+
+.form-input-container input:focus,
+.form-input-container select:focus,
+.form-input-container textarea:focus,
+.inline-form-row input:focus {
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+}
+
+.tenant-theme .form-input-container input:focus,
+.tenant-theme .form-input-container select:focus,
+.tenant-theme .form-input-container textarea:focus {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+}
+
+.btn-submit-form,
+.btn-action-trigger,
+.btn-send-message,
+.circle-action-btn,
+.tab-navigation-item,
+.gallery-miniatures img {
+  transition: transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    filter var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
+}
+
+.btn-submit-form:focus-visible,
+.btn-action-trigger:focus-visible,
+.btn-send-message:focus-visible,
+.circle-action-btn:focus-visible,
+.role-interactive-card:focus-visible,
+.tab-navigation-item:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #scr-role-select .role-interactive-card:hover,
+  .apartment-card-ui:hover,
+  .chat-list-item:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+    box-shadow: var(--shadow-md);
+  }
+
+  .tenant-theme .role-interactive-card:hover,
+  .tenant-theme .chat-list-item:hover {
+    border-color: color-mix(in srgb, var(--secondary) 38%, var(--border));
+  }
+
+  .btn-submit-form:not(:disabled):hover,
+  .btn-action-trigger:hover,
+  .btn-send-message:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.04);
+    box-shadow: var(--shadow-md);
+  }
+
+  .circle-action-btn:hover,
+  .gallery-miniatures img:hover {
+    transform: translateY(-2px) scale(1.04);
+  }
+
+  .tab-navigation-item:hover i {
+    transform: translateY(-2px);
+  }
+}
+
+.btn-submit-form:not(:disabled):active,
+.btn-action-trigger:active,
+.btn-send-message:active,
+.circle-action-btn:active,
+.gallery-miniatures img:active {
+  transform: scale(0.97);
+}
+
+.tab-navigation-item i {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.rating-criterion-bar-fill {
+  transition: width 520ms var(--motion-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
