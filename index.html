@@ -361,9 +361,8 @@ body { background:var(--background); color:var(--text-main); transition: backgro
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
 import { browserLocalPersistence, createUserWithEmailAndPassword, deleteUser, getAuth, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
-import { getToken } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging.js";
 
 // ===================== firebase-init.js =====================
 const firebaseConfig = {
@@ -387,12 +386,12 @@ setPersistence(auth, browserLocalPersistence).catch((err) => {
 
 async function getMessagingIfSupported() {
   try {
-    const { isSupported, getMessaging } = await import(
+    const { isSupported, getMessaging, getToken } = await import(
       "https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging.js"
     );
     const supported = await isSupported();
     if (!supported) return null;
-    return getMessaging(app);
+    return { messaging: getMessaging(app), getToken };
   } catch (err) {
     console.warn("FCM non disponible sur ce navigateur :", err);
     return null;
@@ -432,7 +431,7 @@ function resetStateOnSignOut() {
 
 
 // ===================== dom-utils.js =====================
-function el(tag, { className, attrs, text, html, children, on } = {}) {
+function el(tag, { className, attrs, text, children, on } = {}) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (attrs) {
@@ -441,7 +440,6 @@ function el(tag, { className, attrs, text, html, children, on } = {}) {
     }
   }
   if (text !== undefined) node.textContent = text;
-  if (html !== undefined) node.innerHTML = html;
   if (children) {
     children.forEach((child) => { if (child) node.appendChild(child); });
   }
@@ -463,13 +461,6 @@ function iconEl(faClass, extraStyle) {
   if (extraStyle) i.setAttribute("style", extraStyle);
   return i;
 }
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
 
 // ===================== auth.js =====================
 async function isTenantEmailAuthorized(email) {
@@ -574,6 +565,16 @@ async function authorizeTenantEmail(email) {
 // ===================== apartments.js =====================
 const MAX_PHOTOS = 4;
 
+function safeImageUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function buildApartmentPayload(form) {
   const title = form.title.trim();
   const price = Number(form.price);
@@ -583,8 +584,14 @@ function buildApartmentPayload(form) {
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error("Le prix du loyer doit être un nombre positif.");
   }
-  const images = [form.photo1, form.photo2, form.photo3, form.photo4]
-    .map((u) => (u || "").trim()).filter(Boolean).slice(0, MAX_PHOTOS);
+  const photoUrls = [form.photo1, form.photo2, form.photo3, form.photo4]
+    .map((url) => (url || "").trim())
+    .filter(Boolean)
+    .slice(0, MAX_PHOTOS);
+  const images = photoUrls.map(safeImageUrl);
+  if (images.some((url) => !url)) {
+    throw new Error("Les photos doivent utiliser des liens URL HTTPS valides.");
+  }
   if (images.length === 0) {
     throw new Error("Merci de fournir au moins une photo de couverture (URL).");
   }
@@ -634,9 +641,10 @@ function watchCatalog(callback) {
 }
 
 function filterCatalog(apartments) {
-  const { searchQuery, filterType, filterCommune } = state;
+  const normalizedSearch = String(state.searchQuery || "").trim().toLowerCase();
+  const { filterType, filterCommune } = state;
   return apartments.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = String(item.title || "").toLowerCase().includes(normalizedSearch);
     const matchesType = filterType === "Tous" || item.type === filterType;
     const matchesCommune = filterCommune === "Toutes" || item.commune === filterCommune;
     return matchesSearch && matchesType && matchesCommune;
@@ -801,12 +809,16 @@ async function getEndedLeasesToRate(ownerId) {
   );
   const snap = await getDocs(q);
   const leases = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const withoutRating = [];
-  for (const lease of leases) {
-    const ratingSnap = await getDoc(doc(db, "ratings", lease.id));
-    if (!ratingSnap.exists()) withoutRating.push(lease);
+  const ratedLeaseIds = new Set();
+  for (let i = 0; i < leases.length; i += 30) {
+    const ratingSnaps = await Promise.all(
+      leases.slice(i, i + 30).map((lease) => getDoc(doc(db, "ratings", lease.id)))
+    );
+    ratingSnaps.forEach((rating) => {
+      if (rating.exists()) ratedLeaseIds.add(rating.id);
+    });
   }
-  return withoutRating;
+  return leases.filter((lease) => !ratedLeaseIds.has(lease.id));
 }
 async function submitRating(lease, scores, comment) {
   const sanitized = {};
@@ -916,16 +928,20 @@ async function broadcastToAllTenants(text) {
   const owner = state.currentUser;
   const q = query(collection(db, "chats"), where("ownerId", "==", owner.uid));
   const snap = await getDocs(q);
-  let count = 0;
-  for (const chatDoc of snap.docs) {
-    await addDoc(collection(db, "chats", chatDoc.id, "messages"), {
-      senderId: owner.uid,
-      text: `[Diffusion Groupée] : ${text}`,
-      createdAt: serverTimestamp(),
+  const chats = snap.docs;
+  for (let i = 0; i < chats.length; i += 450) {
+    const batch = writeBatch(db);
+    chats.slice(i, i + 450).forEach((chatDoc) => {
+      const messageRef = doc(collection(db, "chats", chatDoc.id, "messages"));
+      batch.set(messageRef, {
+        senderId: owner.uid,
+        text: `[Diffusion Groupée] : ${text}`,
+        createdAt: serverTimestamp(),
+      });
     });
-    count += 1;
+    await batch.commit();
   }
-  return count;
+  return chats.length;
 }
 
 function watchMyChats(callback) {
@@ -953,8 +969,9 @@ const VAPID_KEY = "VAPID_KEY_A_CONFIGURER";
 
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return null;
-  const messaging = await getMessagingIfSupported();
-  if (!messaging) return null;
+  const messagingContext = await getMessagingIfSupported();
+  if (!messagingContext) return null;
+  const { messaging, getToken } = messagingContext;
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return null;
@@ -1355,8 +1372,9 @@ function buildApartmentCard(item, { mode }) {
   const card = el("div", { className: "apartment-card-ui" });
 
   const imagePlaceholder = el("div", { className: "apartment-card-image-placeholder" });
-  const coverImg = item.imageUrl
-    ? el("img", { attrs: { id: `cover-${item.id}`, src: item.imageUrl, alt: item.title } })
+  const imageUrl = safeImageUrl(item.imageUrl);
+  const coverImg = imageUrl
+    ? el("img", { attrs: { id: `cover-${item.id}`, src: imageUrl, alt: item.title } })
     : iconEl("fa-solid fa-image");
   imagePlaceholder.appendChild(coverImg);
   imagePlaceholder.appendChild(el("span", {
@@ -1369,12 +1387,13 @@ function buildApartmentCard(item, { mode }) {
   if (Array.isArray(item.images) && item.images.length > 0) {
     const gallery = el("div", { className: "gallery-miniatures" });
     item.images.forEach((imgUrl) => {
-      if (!imgUrl) return;
+      const safeUrl = safeImageUrl(imgUrl);
+      if (!safeUrl) return;
       gallery.appendChild(el("img", {
-        attrs: { src: imgUrl, alt: "" },
+        attrs: { src: safeUrl, alt: "" },
         on: { click: (e) => {
           e.stopPropagation();
-          if (coverImg.tagName === "IMG") coverImg.src = imgUrl;
+          if (coverImg.tagName === "IMG") coverImg.src = safeUrl;
         }},
       }));
     });
@@ -1576,6 +1595,8 @@ function loadTenantReputation(container) {
     .catch((err) => console.warn("Réputation indisponible :", err));
 }
 
+let tenantSearchRenderTimer;
+
 function renderTenantSearchBox(container) {
   const box = el("div", { className: "search-filter-box" });
 
@@ -1585,7 +1606,8 @@ function renderTenantSearchBox(container) {
   searchInput.value = state.searchQuery;
   searchInput.addEventListener("input", (e) => {
     state.searchQuery = e.target.value;
-    renderTenantCatalog();
+    clearTimeout(tenantSearchRenderTimer);
+    tenantSearchRenderTimer = setTimeout(renderTenantCatalog, 180);
   });
   box.appendChild(el("div", {
     className: "form-input-container",
@@ -1634,7 +1656,9 @@ function renderTenantCatalog() {
       "Aucun logement disponible ne correspond à vos critères."));
     return;
   }
-  filtered.forEach((item) => resultsBox.appendChild(buildApartmentCard(item, { mode: "tenant" })));
+  const fragment = document.createDocumentFragment();
+  filtered.forEach((item) => fragment.appendChild(buildApartmentCard(item, { mode: "tenant" })));
+  resultsBox.appendChild(fragment);
 }
 
 async function startPrivateChat({ ownerId, ownerName, apartmentId, apartmentTitle }) {
