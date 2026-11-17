@@ -44,7 +44,70 @@ service cloud.firestore {
         && get(authorizationPath(email)).data.email == email
         && get(authorizationPath(email)).data.status == 'active'
         && get(authorizationPath(email)).data.ownerIds is list
-        && get(authorizationPath(email)).data.ownerIds.size() > 0;
+        && get(authorizationPath(email)).data.ownerIds.size() > 0
+        && get(authorizationPath(email)).data.ownerIds.size() <= 20;
+    }
+
+    function textWithin(value, maxLength) {
+      return value is string && value.size() <= maxLength;
+    }
+
+    function nonEmptyTextWithin(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
+
+    function validImageUrl(value) {
+      return value is string
+        && value.size() >= 9
+        && value.size() <= 2048
+        && value.matches('^https://.*');
+    }
+
+    function validImages(images) {
+      return images is list
+        && images.size() >= 1
+        && images.size() <= 7
+        && validImageUrl(images[0])
+        && (images.size() < 2 || validImageUrl(images[1]))
+        && (images.size() < 3 || validImageUrl(images[2]))
+        && (images.size() < 4 || validImageUrl(images[3]))
+        && (images.size() < 5 || validImageUrl(images[4]))
+        && (images.size() < 6 || validImageUrl(images[5]))
+        && (images.size() < 7 || validImageUrl(images[6]));
+    }
+
+    function validRatingScore(value) {
+      return value is number
+        && value >= 1
+        && value <= 10
+        && value == math.floor(value);
+    }
+
+    function validRatingScores(scores) {
+      return scores is map
+        && scores.keys().hasAll([
+          'capacitePaiement', 'ponctualite', 'entretien', 'etatSortie',
+          'communication', 'respectReglement', 'respectVoisinage', 'fiabilite'
+        ])
+        && scores.keys().hasOnly([
+          'capacitePaiement', 'ponctualite', 'entretien', 'etatSortie',
+          'communication', 'respectReglement', 'respectVoisinage', 'fiabilite'
+        ])
+        && validRatingScore(scores.capacitePaiement)
+        && validRatingScore(scores.ponctualite)
+        && validRatingScore(scores.entretien)
+        && validRatingScore(scores.etatSortie)
+        && validRatingScore(scores.communication)
+        && validRatingScore(scores.respectReglement)
+        && validRatingScore(scores.respectVoisinage)
+        && validRatingScore(scores.fiabilite);
+    }
+
+    function expectedRatingAverage(scores) {
+      let total = scores.capacitePaiement + scores.ponctualite
+        + scores.entretien + scores.etatSortie + scores.communication
+        + scores.respectReglement + scores.respectVoisinage + scores.fiabilite;
+      return math.round((total / 8) * 10) / 10;
     }
 
     function validUserProfile(userId, role) {
@@ -88,23 +151,18 @@ service cloud.firestore {
           'reference', 'price', 'specs', 'imageUrl', 'images', 'status',
           'ownerId', 'ownerName', 'tenantId', 'tenantName', 'createdAt', 'updatedAt'
         ])
-        && request.resource.data.title is string
-        && request.resource.data.title.size() > 0
-        && request.resource.data.title.size() <= 120
-        && request.resource.data.type is string
-        && request.resource.data.commune is string
-        && request.resource.data.avenue is string
-        && request.resource.data.streetNumber is string
-        && (request.resource.data.door == null || request.resource.data.door is string)
-        && request.resource.data.reference is string
+        && nonEmptyTextWithin(request.resource.data.title, 120)
+        && nonEmptyTextWithin(request.resource.data.type, 60)
+        && nonEmptyTextWithin(request.resource.data.commune, 80)
+        && nonEmptyTextWithin(request.resource.data.avenue, 160)
+        && nonEmptyTextWithin(request.resource.data.streetNumber, 40)
+        && (request.resource.data.door == null || textWithin(request.resource.data.door, 40))
+        && nonEmptyTextWithin(request.resource.data.reference, 160)
         && request.resource.data.price is number
         && request.resource.data.price > 0
-        && request.resource.data.specs is string
-        && request.resource.data.imageUrl is string
-        && request.resource.data.imageUrl.matches('^https://.*')
-        && request.resource.data.images is list
-        && request.resource.data.images.size() >= 1
-        && request.resource.data.images.size() <= 4
+        && textWithin(request.resource.data.specs, 2000)
+        && validImageUrl(request.resource.data.imageUrl)
+        && validImages(request.resource.data.images)
         && request.resource.data.images[0] == request.resource.data.imageUrl
         && request.resource.data.status == 'Disponible'
         && request.resource.data.ownerId == request.auth.uid
@@ -252,45 +310,13 @@ service cloud.firestore {
         && request.resource.data.tenantId == get(path).data.tenantId
         && request.resource.data.tenantName == get(path).data.tenantName
         && request.resource.data.apartmentId == get(path).data.apartmentId
-        && request.resource.data.scores is map
-        && request.resource.data.scores.keys().hasAll([
-          'capacitePaiement', 'ponctualite', 'entretien', 'etatSortie',
-          'communication', 'respectReglement', 'respectVoisinage', 'fiabilite'
-        ])
-        && request.resource.data.scores.keys().hasOnly([
-          'capacitePaiement', 'ponctualite', 'entretien', 'etatSortie',
-          'communication', 'respectReglement', 'respectVoisinage', 'fiabilite'
-        ])
-        && request.resource.data.scores.capacitePaiement is number
-        && request.resource.data.scores.capacitePaiement >= 1
-        && request.resource.data.scores.capacitePaiement <= 10
-        && request.resource.data.scores.ponctualite is number
-        && request.resource.data.scores.ponctualite >= 1
-        && request.resource.data.scores.ponctualite <= 10
-        && request.resource.data.scores.entretien is number
-        && request.resource.data.scores.entretien >= 1
-        && request.resource.data.scores.entretien <= 10
-        && request.resource.data.scores.etatSortie is number
-        && request.resource.data.scores.etatSortie >= 1
-        && request.resource.data.scores.etatSortie <= 10
-        && request.resource.data.scores.communication is number
-        && request.resource.data.scores.communication >= 1
-        && request.resource.data.scores.communication <= 10
-        && request.resource.data.scores.respectReglement is number
-        && request.resource.data.scores.respectReglement >= 1
-        && request.resource.data.scores.respectReglement <= 10
-        && request.resource.data.scores.respectVoisinage is number
-        && request.resource.data.scores.respectVoisinage >= 1
-        && request.resource.data.scores.respectVoisinage <= 10
-        && request.resource.data.scores.fiabilite is number
-        && request.resource.data.scores.fiabilite >= 1
-        && request.resource.data.scores.fiabilite <= 10
+        && validRatingScores(request.resource.data.scores)
         && request.resource.data.average is number
         && request.resource.data.average >= 1
         && request.resource.data.average <= 10
+        && request.resource.data.average == expectedRatingAverage(request.resource.data.scores)
         && request.resource.data.max == 10
-        && request.resource.data.comment is string
-        && request.resource.data.comment.size() <= 1000
+        && textWithin(request.resource.data.comment, 1000)
         && request.resource.data.status == 'published'
         && request.resource.data.createdAt == request.time;
     }
@@ -331,6 +357,38 @@ service cloud.firestore {
         && (
           get(chatPath(chatId)).data.ownerId == request.auth.uid
           || get(chatPath(chatId)).data.tenantId == request.auth.uid
+        );
+    }
+
+    function validAuthorizationUpdate(email) {
+      return isOwner()
+        && resource.data.email == email
+        && resource.data.ownerIds is list
+        && resource.data.ownerIds.size() > 0
+        && resource.data.ownerIds.size() <= 20
+        && request.resource.data.keys().hasAll(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.email == email
+        && request.resource.data.ownerIds is list
+        && request.resource.data.ownerIds.size() >= resource.data.ownerIds.size()
+        && request.resource.data.ownerIds.size() <= 20
+        && request.resource.data.ownerIds.hasAll(resource.data.ownerIds)
+        && request.resource.data.ownerIds.hasOnly(resource.data.ownerIds.concat([request.auth.uid]))
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            resource.data.ownerIds.hasAny([request.auth.uid])
+            && (
+              request.resource.data.status == resource.data.status
+              || (resource.data.status == 'active' && request.resource.data.status == 'revoked')
+              || (resource.data.status == 'revoked' && request.resource.data.status == 'active')
+            )
+          )
+          || (
+            !resource.data.ownerIds.hasAny([request.auth.uid])
+            && request.resource.data.status == resource.data.status
+          )
         );
     }
 
@@ -378,18 +436,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      allow update: if isOwner()
-        && resource.data.email == email
-        && request.resource.data.keys().hasAll(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
-        && request.resource.data.keys().hasOnly(['email', 'ownerIds', 'status', 'createdAt', 'updatedAt'])
-        && request.resource.data.email == email
-        && request.resource.data.ownerIds is list
-        && request.resource.data.ownerIds.hasAll(resource.data.ownerIds)
-        && request.resource.data.ownerIds.hasAny([request.auth.uid])
-        && request.resource.data.ownerIds.size() <= resource.data.ownerIds.size() + 1
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedAt == request.time;
+      allow update: if validAuthorizationUpdate(email);
 
       allow delete: if false;
     }
@@ -445,9 +492,14 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      allow get, list: if isAppUser()
+      allow get: if isAppUser()
         && resource.data.participantIds is list
         && resource.data.participantIds.hasAny([request.auth.uid])
+        && (
+          resource.data.ownerId == request.auth.uid
+          || resource.data.tenantId == request.auth.uid
+        );
+      allow list: if isAppUser()
         && (
           resource.data.ownerId == request.auth.uid
           || resource.data.tenantId == request.auth.uid

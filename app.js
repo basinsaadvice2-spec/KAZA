@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
 import { browserLocalPersistence, createUserWithEmailAndPassword, deleteUser, getAuth, onAuthStateChanged, sendEmailVerification, setPersistence, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import { addDoc, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { deleteObject, getDownloadURL, getStorage, ref as storageRef, uploadBytes } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
 
 // Public Firebase web configuration. Firebase client API keys identify the project;
 // Firestore Rules and App Check (when configured) control access.
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.error("Impossible de configurer la persistance Auth :", err);
@@ -181,46 +183,38 @@ async function registerUser({ role, name, email, phone, password }) {
 
 async function loginUser({ role, email, password }) {
   return withAuthFlow(async () => {
+    if (role !== "owner" && role !== "tenant") {
+      throw new Error("Choisissez un espace bailleur ou locataire avant de vous connecter.");
+    }
     const cleanEmail = normalizeEmail(email);
     const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
     const user = cred.user;
+    try {
+      if (!user.emailVerified) {
+        await sendEmailVerification(user).catch(() => {});
+        throw new Error("Votre adresse e-mail n'est pas encore vérifiée. Nous vous avons renvoyé le lien de vérification.");
+      }
 
-    if (!user.emailVerified) {
-      await sendEmailVerification(user).catch(() => {});
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (!snap.exists()) {
+        throw new Error("Aucun profil KAZA n'est associé à ce compte. Inscrivez-vous avec le bon type de compte ou contactez le support.");
+      }
+
+      const profile = { uid: user.uid, ...snap.data() };
+      if (profile.role !== "owner" && profile.role !== "tenant") {
+        throw new Error("Le profil de ce compte est invalide. Contactez le support KAZA.");
+      }
+      if (profile.role !== role) {
+        throw new Error(`Ce compte est enregistré comme ${profile.role === "owner" ? "bailleur" : "locataire"}. Choisissez l'espace correspondant.`);
+      }
+
+      state.currentUser = profile;
+      return profile;
+    } catch (err) {
       await signOut(auth).catch(() => {});
       resetStateOnSignOut();
-      throw new Error("Votre adresse e-mail n'est pas encore vérifiée. Nous vous avons renvoyé le lien de vérification.");
+      throw err;
     }
-
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-    let profile;
-    if (snap.exists()) {
-      profile = { uid: user.uid, ...snap.data() };
-      if (profile.role !== role) {
-        await signOut(auth).catch(() => {});
-        resetStateOnSignOut();
-        throw new Error("Ce compte est enregistré avec un autre profil. Choisissez le bon type de compte.");
-      }
-    } else {
-      if (role === "tenant" && !(await isTenantEmailAuthorized(cleanEmail))) {
-        await signOut(auth).catch(() => {});
-        resetStateOnSignOut();
-        throw new Error("Cette adresse e-mail n'a pas encore été autorisée par un bailleur sur KAZA.");
-      }
-      profile = buildUserProfile(user, role);
-      try {
-        await setDoc(userRef, profile);
-      } catch (err) {
-        await signOut(auth).catch(() => {});
-        resetStateOnSignOut();
-        throw err;
-      }
-      profile = { uid: user.uid, ...profile };
-    }
-
-    state.currentUser = profile;
-    return profile;
   });
 }
 
@@ -286,7 +280,10 @@ async function authorizeTenantEmail(email) {
   return cleanEmail;
 }
 // ===================== apartments.js =====================
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 7;
+const MAX_ORIGINAL_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_COMPRESSED_IMAGE_BYTES = 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1800;
 
 function safeImageUrl(value) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -298,7 +295,7 @@ function safeImageUrl(value) {
   }
 }
 
-function buildApartmentPayload(form) {
+function buildApartmentPayload(form, images) {
   const title = form.title.trim();
   const price = Number(form.price);
   if (!title || !price || !form.avenue.trim() || !form.streetNumber.trim() || !form.reference.trim()) {
@@ -307,16 +304,11 @@ function buildApartmentPayload(form) {
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error("Le prix du loyer doit être un nombre positif.");
   }
-  const photoUrls = [form.photo1, form.photo2, form.photo3, form.photo4]
-    .map((url) => (url || "").trim())
-    .filter(Boolean)
-    .slice(0, MAX_PHOTOS);
-  const images = photoUrls.map(safeImageUrl);
-  if (images.some((url) => !url)) {
-    throw new Error("Les photos doivent utiliser des liens URL HTTPS valides.");
-  }
   if (images.length === 0) {
-    throw new Error("Merci de fournir au moins une photo de couverture (URL).");
+    throw new Error("Merci de sélectionner au moins une photo du logement.");
+  }
+  if (images.length > MAX_PHOTOS || images.some((url) => !safeImageUrl(url))) {
+    throw new Error("Les photos sélectionnées ne sont pas valides. Choisissez jusqu'à 7 images.");
   }
   return {
     title, type: form.type, commune: form.commune,
@@ -336,13 +328,133 @@ function buildApartmentPayload(form) {
   };
 }
 
-async function createApartment(form) {
-  const payload = buildApartmentPayload(form);
-  await addDoc(collection(db, "apartments"), payload);
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Le navigateur n'a pas pu réduire cette image."));
+    }, type, quality);
+  });
+}
+
+async function decodeImageFile(file) {
+  if (typeof createImageBitmap === "function") {
+    const bitmap = await createImageBitmap(file);
+    return { source: bitmap, width: bitmap.width, height: bitmap.height, cleanup: () => bitmap.close() };
+  }
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = objectUrl;
+    await image.decode();
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      cleanup: () => URL.revokeObjectURL(objectUrl),
+    };
+  } catch (err) {
+    URL.revokeObjectURL(objectUrl);
+    throw err;
+  }
+}
+
+async function compressImageFile(file) {
+  if (!file.type.startsWith("image/")) throw new Error(`${file.name} n'est pas une image valide.`);
+  if (file.size > MAX_ORIGINAL_IMAGE_BYTES) {
+    throw new Error(`${file.name} dépasse la limite de 20 Mo avant compression.`);
+  }
+
+  let decoded;
+  try {
+    decoded = await decodeImageFile(file);
+    const firstScale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(decoded.width, decoded.height));
+    let width = Math.max(1, Math.round(decoded.width * firstScale));
+    let height = Math.max(1, Math.round(decoded.height * firstScale));
+    const canvas = document.createElement("canvas");
+    let bestBlob = null;
+
+    for (let resizeAttempt = 0; resizeAttempt < 5; resizeAttempt += 1) {
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) throw new Error("La compression d'image n'est pas disponible dans ce navigateur.");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(decoded.source, 0, 0, width, height);
+
+      for (const type of ["image/webp", "image/jpeg"]) {
+        for (const quality of [0.82, 0.72, 0.62, 0.52]) {
+          const blob = await canvasToBlob(canvas, type, quality);
+          if (blob.type !== type) continue;
+          if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+          if (blob.size <= MAX_COMPRESSED_IMAGE_BYTES) return blob;
+        }
+      }
+
+      if (Math.max(width, height) <= 640) break;
+      width = Math.max(1, Math.round(width * 0.78));
+      height = Math.max(1, Math.round(height * 0.78));
+    }
+
+    if (!bestBlob || bestBlob.size > MAX_COMPRESSED_IMAGE_BYTES) {
+      throw new Error(`Impossible de réduire ${file.name} sous 1 Mo. Choisissez une image plus petite.`);
+    }
+    return bestBlob;
+  } catch (err) {
+    throw new Error(`Compression impossible pour ${file.name} : ${err.message || "format non pris en charge"}`);
+  } finally {
+    decoded?.cleanup();
+  }
+}
+
+async function createApartment(form, onProgress = () => {}) {
+  if (state.currentUser?.role !== "owner") throw new Error("Seul un bailleur peut publier un bien.");
+  const photos = Array.from(form.photos || []);
+  if (photos.length < 1 || photos.length > MAX_PHOTOS) {
+    throw new Error("Sélectionnez de 1 à 7 photos pour publier le logement.");
+  }
+
+  const apartmentRef = doc(collection(db, "apartments"));
+  const uploadedFiles = [];
+  try {
+    const images = [];
+    for (let index = 0; index < photos.length; index += 1) {
+      onProgress(`Compression de la photo ${index + 1}/${photos.length}…`);
+      const blob = await compressImageFile(photos[index]);
+      const path = `apartments/${state.currentUser.uid}/${apartmentRef.id}/photo-${index + 1}`;
+      const objectRef = storageRef(storage, path);
+      onProgress(`Envoi de la photo ${index + 1}/${photos.length} (${(blob.size / 1024).toFixed(0)} Ko)…`);
+      await uploadBytes(objectRef, blob, {
+        contentType: blob.type || "image/jpeg",
+        cacheControl: "public,max-age=31536000",
+      });
+      uploadedFiles.push(path);
+      images.push(await getDownloadURL(objectRef));
+    }
+
+    onProgress("Enregistrement de l'annonce…");
+    await setDoc(apartmentRef, buildApartmentPayload(form, images));
+  } catch (err) {
+    await Promise.allSettled(uploadedFiles.map((path) => deleteObject(storageRef(storage, path))));
+    throw err;
+  }
 }
 
 async function deleteApartment(apartmentId) {
-  await deleteDoc(doc(db, "apartments", apartmentId));
+  if (state.currentUser?.role !== "owner") throw new Error("Seul un bailleur peut supprimer un bien.");
+  const apartmentRef = doc(db, "apartments", apartmentId);
+  const snap = await getDoc(apartmentRef);
+  if (!snap.exists()) return;
+  const apartment = snap.data();
+  if (apartment.ownerId !== state.currentUser.uid || apartment.tenantId) {
+    throw new Error("Seul le bailleur peut supprimer son logement lorsqu'il n'est pas loué.");
+  }
+  await deleteDoc(apartmentRef);
+  const imagePaths = Array.from({ length: MAX_PHOTOS }, (_, index) =>
+    `apartments/${state.currentUser.uid}/${apartmentId}/photo-${index + 1}`
+  );
+  await Promise.allSettled(imagePaths.map((path) => deleteObject(storageRef(storage, path))));
 }
 
 function watchOwnerApartments(ownerId, callback) {
@@ -530,37 +642,58 @@ async function findActiveLease(apartmentId) {
   return { id: d.id, ...d.data() };
 }
 
-async function notifyPayment(apartment) {
+async function notifyPayment(apartment, paymentDetails = {}) {
+  if (state.currentUser?.role !== "tenant") throw new Error("Seul un locataire peut déclarer un paiement.");
   const lease = await findActiveLease(apartment.id);
   if (!lease) throw new Error("Aucun contrat actif trouvé pour ce logement.");
+  let proofPath = null;
+  if (paymentDetails.proofFile) {
+    const proofBlob = await compressImageFile(paymentDetails.proofFile);
+    proofPath = `payment-proofs/${lease.id}/${state.currentUser.uid}/proof-${Date.now()}`;
+    await uploadBytes(storageRef(storage, proofPath), proofBlob, {
+      contentType: proofBlob.type || "image/jpeg",
+      cacheControl: "private,max-age=3600",
+    });
+  }
   const apartmentRef = doc(db, "apartments", apartment.id);
   const leaseRef = doc(db, "leases", lease.id);
-  await runTransaction(db, async (tx) => {
-    const apartmentSnap = await tx.get(apartmentRef);
-    const leaseSnap = await tx.get(leaseRef);
-    if (!apartmentSnap.exists() || !leaseSnap.exists()) {
-      throw new Error("Le contrat ou le logement n'existe plus.");
-    }
-    if (apartmentSnap.data().status !== "Occupé"
-      || apartmentSnap.data().tenantId !== state.currentUser.uid
-      || leaseSnap.data().apartmentId !== apartment.id
-      || leaseSnap.data().tenantId !== state.currentUser.uid
-      || leaseSnap.data().status !== "active") {
-      throw new Error("Ce contrat n'est pas associé à votre compte.");
-    }
-    tx.update(apartmentRef, { paymentStatus: "signale", updatedAt: serverTimestamp() });
-    tx.update(leaseRef, { paymentStatus: "signale" });
-  });
+  try {
+    await runTransaction(db, async (tx) => {
+      const apartmentSnap = await tx.get(apartmentRef);
+      const leaseSnap = await tx.get(leaseRef);
+      if (!apartmentSnap.exists() || !leaseSnap.exists()) {
+        throw new Error("Le contrat ou le logement n'existe plus.");
+      }
+      if (apartmentSnap.data().status !== "Occupé"
+        || apartmentSnap.data().tenantId !== state.currentUser.uid
+        || leaseSnap.data().apartmentId !== apartment.id
+        || leaseSnap.data().tenantId !== state.currentUser.uid
+        || leaseSnap.data().status !== "active") {
+        throw new Error("Ce contrat n'est pas associé à votre compte.");
+      }
+      tx.update(apartmentRef, { paymentStatus: "signale", updatedAt: serverTimestamp() });
+      tx.update(leaseRef, { paymentStatus: "signale" });
+    });
+  } catch (err) {
+    if (proofPath) await deleteObject(storageRef(storage, proofPath)).catch(() => {});
+    throw err;
+  }
   const chatId = await getOrCreateChat({
     ownerId: apartment.ownerId, ownerName: apartment.ownerName,
     apartmentId: apartment.id, apartmentTitle: apartment.title,
   });
-  await postSystemMessage(
-    chatId,
-    "💰 LOGISTIQUE PAIEMENT : Le locataire " + state.currentUser.name
-      + " déclare avoir réglé le loyer de " + apartment.price
-      + " $ (déclaration non vérifiée, en attente de confirmation du bailleur)."
-  );
+  const paymentMessage = [
+    `💰 PREUVE DE PAIEMENT — ${state.currentUser.name}`,
+    `Logement : ${apartment.title || "Logement"}`,
+    `Montant déclaré : ${apartment.price} $`,
+    paymentDetails.method ? `Moyen : ${paymentDetails.method}` : "",
+    paymentDetails.date ? `Date : ${paymentDetails.date}` : "",
+    paymentDetails.reference ? `Référence / preuve : ${paymentDetails.reference}` : "",
+    paymentDetails.details ? `Détails : ${paymentDetails.details}` : "",
+    proofPath ? `Pièce jointe KAZA : ${proofPath}` : "",
+    "Déclaration non vérifiée : le bailleur doit confirmer la réception des fonds.",
+  ].filter(Boolean).join("\n").slice(0, 2000);
+  await postSystemMessage(chatId, paymentMessage);
 }
 
 async function confirmTenantPayment(apartment) {
@@ -872,7 +1005,7 @@ async function submitAuthForm() {
       }
     } else {
       const profile = await loginUser({ role: state.pendingRole, email, password });
-      enterAppForUser(profile);
+      enterAppForUser(profile, state.pendingRole);
     }
   } catch (err) { showError(err); }
   finally { submitBtn.disabled = false; submitBtn.textContent = "Continuer"; }
@@ -884,9 +1017,20 @@ function initAuthScreen() {
   document.getElementById("auth-toggle-mode-link").addEventListener("click", toggleAuthMode);
 }
 
-function enterAppForUser(profile) {
+function enterAppForUser(profile, expectedRole = null) {
   if (unsubApartments) unsubApartments();
   if (unsubChats) unsubChats();
+
+  if (!profile || (profile.role !== "owner" && profile.role !== "tenant")) {
+    throw new Error("Profil KAZA invalide. Reconnectez-vous ou contactez le support.");
+  }
+  if (expectedRole && profile.role !== expectedRole) {
+    signOut(auth).catch(() => {});
+    resetStateOnSignOut();
+    changeView("scr-role-select");
+    showError(new Error("Le compte connecté ne correspond pas à l'espace choisi. Vous avez été déconnecté."));
+    return;
+  }
 
   if (profile.role === "owner") {
     document.getElementById("owner-profile-display").textContent = profile.name;
@@ -1180,7 +1324,7 @@ function renderOwnerApartments(container, apartments) {
   apartments.forEach((item) => container.appendChild(buildApartmentCard(item, { mode: "owner" })));
 }
 
-function renderOwnerTenants(container, apartments) {
+async function renderOwnerTenants(container, apartments) {
   clear(container);
   container.appendChild(el("div", {
     className: "action-context-bar",
@@ -1204,10 +1348,7 @@ function renderOwnerTenants(container, apartments) {
       className: "muted-text",
       text: "Quand un locataire louera l'un de vos biens, ses informations et le suivi du loyer apparaîtront ici.",
     }));
-    return;
-  }
-
-  occupied.forEach((apartment) => {
+  } else occupied.forEach((apartment) => {
     const paymentLabel = apartment.paymentStatus === "signale"
       ? "Paiement signalé : à confirmer"
       : apartment.paymentStatus === "confirme"
@@ -1251,10 +1392,32 @@ function renderOwnerTenants(container, apartments) {
     container.appendChild(card);
   });
 
-  container.appendChild(el("p", {
-    className: "muted-text",
-    text: "Les évaluations des locataires après leur départ se trouvent dans Statistiques.",
+  const endedLeases = await getEndedLeasesToRate(state.currentUser.uid).catch(() => []);
+  if (state.currentUser?.role !== "owner"
+    || !document.getElementById("nav-tab-owner-tenants").classList.contains("active")) return;
+  const ratingBox = el("div", { className: "surface-box tenant-management-card" });
+  ratingBox.appendChild(el("h4", { text: "Locataires partis — évaluations" }));
+  ratingBox.appendChild(el("p", {
+    text: "Après la fin d'un bail, attribuez une note générale et détaillez votre expérience.",
   }));
+  if (endedLeases.length === 0) {
+    ratingBox.appendChild(el("p", { className: "muted-text", text: "Aucun ancien locataire n'attend d'évaluation." }));
+  } else {
+    endedLeases.forEach((lease) => {
+      ratingBox.appendChild(el("div", {
+        className: "inline-form-row",
+        children: [
+          el("span", { text: lease.tenantName || "Ancien locataire" }),
+          el("button", {
+            className: "btn-action-trigger",
+            children: [iconEl("fa-solid fa-star"), document.createTextNode(" Évaluer /10")],
+            on: { click: () => openRatingModal(lease) },
+          }),
+        ],
+      }));
+    });
+  }
+  container.appendChild(ratingBox);
 }
 
 function blankSlate(iconClass, text) {
@@ -1389,6 +1552,16 @@ function buildTenantActionsRow(item) {
         } catch (err) { showError(err); }
       }},
     }));
+    row.appendChild(el("button", {
+      className: "btn-action-trigger small-btn",
+      children: [iconEl("fa-solid fa-file-signature"), document.createTextNode(" Donner préavis")],
+      on: { click: (e) => { e.stopPropagation(); openTenantRequestModal(item, "notice"); } },
+    }));
+    row.appendChild(el("button", {
+      className: "btn-action-trigger warn-btn small-btn",
+      children: [iconEl("fa-solid fa-screwdriver-wrench"), document.createTextNode(" Signaler un problème")],
+      on: { click: (e) => { e.stopPropagation(); openTenantRequestModal(item, "issue"); } },
+    }));
     if (item.paymentStatus === "signale") {
       row.appendChild(el("span", {
         className: "status-pill declared",
@@ -1405,10 +1578,7 @@ function buildTenantActionsRow(item) {
         children: [iconEl("fa-solid fa-money-bill-wave"), document.createTextNode(" Signaler Loyer Payé")],
         on: { click: async (e) => {
           e.stopPropagation();
-          try {
-            await notifyPayment(item);
-            alert("Déclaration envoyée au bailleur. Ceci n'est pas une preuve de paiement automatique : le bailleur doit confirmer avoir réellement reçu les fonds.");
-          } catch (err) { showError(err); }
+          openTenantRequestModal(item, "payment");
         }},
       }));
     }
@@ -1416,6 +1586,183 @@ function buildTenantActionsRow(item) {
     row.appendChild(el("span", { className: "apartment-card-badge static-badge", text: "Occupé" }));
   }
   return row;
+}
+
+function openTenantRequestModal(apartment, requestType) {
+  if (state.currentUser?.role !== "tenant" || apartment.tenantId !== state.currentUser.uid) {
+    showError(new Error("Cette action est réservée au locataire associé au logement."));
+    return;
+  }
+
+  const requestConfig = {
+    payment: { title: "Envoyer une preuve de paiement", submit: "Envoyer au bailleur" },
+    notice: { title: "Donner un préavis de départ", submit: "Envoyer le préavis" },
+    issue: { title: "Signaler un problème au logement", submit: "Envoyer le signalement" },
+  }[requestType];
+  if (!requestConfig) return;
+
+  const overlay = el("div", { className: "modal-overlay" });
+  const modal = el("div", { className: "modal-box" });
+  modal.appendChild(el("h3", { text: requestConfig.title }));
+  modal.appendChild(el("p", {
+    className: "rating-scale-hint",
+    text: `${apartment.title || "Logement"} — votre bailleur recevra ces informations dans la messagerie KAZA.`,
+  }));
+
+  const addField = (label, input, help = "") => {
+    const field = el("div", { className: "form-input-container" });
+    field.appendChild(el("label", { text: label }));
+    field.appendChild(input);
+    if (help) field.appendChild(el("p", { className: "request-field-help", text: help }));
+    modal.appendChild(field);
+    return input;
+  };
+
+  let paymentMethod;
+  let paymentDate;
+  let paymentReference;
+  let paymentDetails;
+  let paymentProofFile;
+  let expectedLeaveDate;
+  let noticeDetails;
+  let issueTitle;
+  let issueDescription;
+
+  if (requestType === "payment") {
+    paymentMethod = addField("Moyen de paiement", el("select", { children: [
+      el("option", { attrs: { value: "" }, text: "Choisir…" }),
+      el("option", { attrs: { value: "Virement bancaire" }, text: "Virement bancaire" }),
+      el("option", { attrs: { value: "Mobile Money" }, text: "Mobile Money" }),
+      el("option", { attrs: { value: "Espèces" }, text: "Espèces" }),
+      el("option", { attrs: { value: "Autre" }, text: "Autre" }),
+    ] }));
+    paymentDate = addField("Date du paiement", el("input", { attrs: { type: "date" } }));
+    paymentReference = addField(
+      "Référence ou preuve", el("input", { attrs: { type: "text", maxlength: "300", placeholder: "Référence de transaction ou preuve reçue" } }),
+      "Les paiements ne sont pas traités par KAZA. Le bailleur doit confirmer la réception."
+    );
+    paymentDetails = addField("Précisions (facultatif)", el("textarea", {
+      attrs: { rows: "3", maxlength: "500", placeholder: "Ex. paiement en espèces remis au bailleur" },
+    }));
+    paymentProofFile = addField(
+      "Joindre une photo du reçu (facultatif)",
+      el("input", { attrs: { type: "file", accept: "image/jpeg,image/png,image/webp" } }),
+      "KAZA compresse la pièce jointe avant l'envoi. Elle reste accessible au bailleur et au locataire du bail."
+    );
+  } else if (requestType === "notice") {
+    expectedLeaveDate = addField("Date de départ envisagée", el("input", { attrs: { type: "date" } }));
+    noticeDetails = addField("Message au bailleur (facultatif)", el("textarea", {
+      attrs: { rows: "4", maxlength: "1000", placeholder: "Ajoutez un détail utile concernant votre préavis" },
+    }));
+  } else {
+    issueTitle = addField("Sujet", el("input", {
+      attrs: { type: "text", maxlength: "120", placeholder: "Ex. fuite d'eau dans la cuisine" },
+    }));
+    issueDescription = addField("Description du problème", el("textarea", {
+      attrs: { rows: "4", maxlength: "1500", placeholder: "Décrivez ce qui se passe et depuis quand" },
+    }));
+  }
+
+  const actions = el("div", { className: "modal-actions" });
+  actions.appendChild(el("button", {
+    className: "btn-submit-form",
+    attrs: { style: "background:var(--input-bg); color:var(--text-main);" },
+    text: "Annuler",
+    on: { click: () => overlay.remove() },
+  }));
+  const submit = el("button", {
+    className: "btn-submit-form tenant-theme",
+    text: requestConfig.submit,
+    on: { click: async () => {
+      submit.disabled = true;
+      submit.textContent = "Envoi…";
+      try {
+        const lease = await getActiveLease(apartment.id, state.currentUser.uid);
+        if (!lease) throw new Error("Aucun bail actif n'est associé à ce logement.");
+        const chatId = await getOrCreateChat({
+          ownerId: apartment.ownerId,
+          ownerName: apartment.ownerName,
+          apartmentId: apartment.id,
+          apartmentTitle: apartment.title,
+        });
+
+        if (requestType === "payment") {
+          const reference = paymentReference.value.trim();
+          const details = paymentDetails.value.trim();
+          if (!reference && !details && !paymentProofFile.files?.length) {
+            throw new Error("Ajoutez une référence, une explication ou la photo d'un reçu.");
+          }
+          await notifyPayment(apartment, {
+            method: paymentMethod.value,
+            date: paymentDate.value,
+            reference,
+            details,
+            proofFile: paymentProofFile.files?.[0] || null,
+          });
+          alert("Votre déclaration et sa référence ont été envoyées au bailleur. Le paiement reste à confirmer.");
+        } else if (requestType === "notice") {
+          if (!expectedLeaveDate.value) throw new Error("Indiquez la date de départ que vous envisagez.");
+          const selectedDate = new Date(`${expectedLeaveDate.value}T00:00:00`);
+          if (Number.isNaN(selectedDate.getTime()) || selectedDate <= new Date(new Date().toDateString())) {
+            throw new Error("La date envisagée doit être postérieure à aujourd'hui.");
+          }
+          const message = [
+            `📋 PRÉAVIS DE DÉPART — ${state.currentUser.name}`,
+            `Logement : ${apartment.title || "Logement"}`,
+            `Date de départ envisagée : ${expectedLeaveDate.value}`,
+            noticeDetails.value.trim() ? `Message : ${noticeDetails.value.trim()}` : "",
+            "Ce préavis informe le bailleur et ne clôture pas automatiquement le bail.",
+          ].filter(Boolean).join("\n");
+          await sendMessage(chatId, message);
+          alert("Votre préavis a été envoyé au bailleur dans la messagerie KAZA.");
+        } else {
+          const title = issueTitle.value.trim();
+          const description = issueDescription.value.trim();
+          if (!title || !description) throw new Error("Indiquez le sujet et décrivez le problème.");
+          await sendMessage(chatId, [
+            `🛠️ SIGNALEMENT DE PROBLÈME — ${state.currentUser.name}`,
+            `Logement : ${apartment.title || "Logement"}`,
+            `Sujet : ${title}`,
+            `Description : ${description}`,
+          ].join("\n"));
+          alert("Votre signalement a été envoyé au bailleur dans la messagerie KAZA.");
+        }
+        overlay.remove();
+      } catch (err) {
+        showError(err);
+        submit.disabled = false;
+        submit.textContent = requestConfig.submit;
+      }
+    } },
+  });
+  actions.appendChild(submit);
+  modal.appendChild(actions);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+let selectedApartmentPhotos = [];
+let apartmentPhotoPreviewUrls = [];
+
+function renderApartmentPhotoPreviews() {
+  const previews = document.getElementById("app-photo-previews");
+  const counter = document.getElementById("app-photo-count");
+  if (!previews || !counter) return;
+  apartmentPhotoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  apartmentPhotoPreviewUrls = [];
+  clear(previews);
+  counter.textContent = `${selectedApartmentPhotos.length} / ${MAX_PHOTOS} photo${selectedApartmentPhotos.length === 1 ? "" : "s"}`;
+  selectedApartmentPhotos.forEach((file, index) => {
+    const url = URL.createObjectURL(file);
+    apartmentPhotoPreviewUrls.push(url);
+    previews.appendChild(el("div", {
+      className: "photo-upload-preview",
+      children: [
+        el("img", { attrs: { src: url, alt: `Aperçu de la photo ${index + 1}` } }),
+        el("span", { text: `${index + 1}. ${(file.size / 1024 / 1024).toFixed(1)} Mo avant réduction` }),
+      ],
+    }));
+  });
 }
 
 function initAddApartmentScreen() {
@@ -1430,7 +1777,25 @@ function initAddApartmentScreen() {
       document.getElementById("app-door").value = "";
     } else { doorField.style.display = "block"; }
   });
+  document.getElementById("app-photos").addEventListener("change", (event) => {
+    const files = Array.from(event.currentTarget.files || []);
+    const status = document.getElementById("app-photo-status");
+    if (files.length > MAX_PHOTOS) {
+      selectedApartmentPhotos = [];
+      event.currentTarget.value = "";
+      status.textContent = "Choisissez au maximum 7 photos.";
+      renderApartmentPhotoPreviews();
+      return;
+    }
+    selectedApartmentPhotos = files;
+    status.textContent = files.length ? "Les photos seront réduites automatiquement avant l'envoi." : "";
+    renderApartmentPhotoPreviews();
+  });
   document.getElementById("btn-save-apartment").addEventListener("click", async () => {
+    const submitButton = document.getElementById("btn-save-apartment");
+    const status = document.getElementById("app-photo-status");
+    submitButton.disabled = true;
+    submitButton.textContent = "Publication en cours…";
     const form = {
       title: document.getElementById("app-title").value,
       type: document.getElementById("app-type").value,
@@ -1441,19 +1806,24 @@ function initAddApartmentScreen() {
       reference: document.getElementById("app-reference").value,
       price: document.getElementById("app-price").value,
       specs: document.getElementById("app-specs").value,
-      photo1: document.getElementById("app-photo-1").value,
-      photo2: document.getElementById("app-photo-2").value,
-      photo3: document.getElementById("app-photo-3").value,
-      photo4: document.getElementById("app-photo-4").value,
+      photos: selectedApartmentPhotos,
     };
     try {
-      await createApartment(form);
+      await createApartment(form, (message) => { status.textContent = message; });
       ["app-title","app-avenue","app-street-number","app-door","app-reference",
-       "app-price","app-specs","app-photo-1","app-photo-2","app-photo-3","app-photo-4"
+       "app-price","app-specs"
       ].forEach((id) => (document.getElementById(id).value = ""));
+      selectedApartmentPhotos = [];
+      document.getElementById("app-photos").value = "";
+      status.textContent = "Annonce publiée avec succès.";
+      renderApartmentPhotoPreviews();
       changeView("scr-owner-dashboard");
       activateOwnerTab("apparts");
     } catch (err) { showError(err); }
+    finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Publier le logement";
+    }
   });
 }
 
@@ -1624,9 +1994,27 @@ function renderMessages(container, messages) {
   clear(container);
   messages.forEach((m) => {
     const isMyMsg = m.senderId === state.currentUser.uid;
+    const proofPath = String(m.text || "").match(/Pièce jointe KAZA : (payment-proofs\/[A-Za-z0-9/_-]+)/)?.[1];
+    const isPrivateRequest = /^(💰 PREUVE DE PAIEMENT|📋 PRÉAVIS DE DÉPART|🛠️ SIGNALEMENT DE PROBLÈME)/.test(String(m.text || ""));
+    const visibleMessage = proofPath
+      ? m.text.replace(`Pièce jointe KAZA : ${proofPath}`, "Pièce jointe KAZA : reçu sécurisé")
+      : m.text;
     const bubble = el("div", { className: `msg-bubble ${isMyMsg ? "outgoing" : "incoming"}` });
-    bubble.appendChild(el("span", { className: "msg-text", text: m.text }));
-    if (state.currentUser.role === "owner" && !isMyMsg) {
+    bubble.appendChild(el("span", { className: "msg-text", text: visibleMessage }));
+    if (proofPath) {
+      const attachmentLink = el("a", {
+        className: "msg-attachment-link",
+        attrs: { target: "_blank", rel: "noopener noreferrer", "aria-disabled": "true" },
+        text: "Chargement du reçu sécurisé…",
+      });
+      bubble.appendChild(attachmentLink);
+      getDownloadURL(storageRef(storage, proofPath)).then((url) => {
+        attachmentLink.setAttribute("href", url);
+        attachmentLink.removeAttribute("aria-disabled");
+        attachmentLink.textContent = "Afficher la photo du reçu";
+      }).catch(() => { attachmentLink.textContent = "Reçu indisponible pour ce compte"; });
+    }
+    if (state.currentUser.role === "owner" && !isMyMsg && !isPrivateRequest) {
       bubble.appendChild(el("span", {
         className: "msg-share-hint",
         children: [iconEl("fa-solid fa-share-nodes"), document.createTextNode(" Diffuser (Style WhatsApp)")],
@@ -1732,6 +2120,11 @@ function openRatingModal(lease) {
         await submitRating(lease, scores, commentInput.value);
         overlay.remove();
         alert("✅ Évaluation enregistrée. Merci de contribuer à la confiance KAZA !");
+        if (state.currentUser?.role === "owner") {
+          const activeTabId = document.querySelector("#scr-owner-dashboard .tab-navigation-item.active")?.id || "";
+          const activeTabName = activeTabId.replace("nav-tab-owner-", "");
+          if (activeTabName) activateOwnerTab(activeTabName);
+        }
       } catch (err) { showError(err); }
     }},
   }));

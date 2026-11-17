@@ -119,12 +119,14 @@
   <div class="form-input-container"><label>Prix du Loyer Mensuel ($ USD)</label><i class="fa-solid fa-dollar-sign"></i><input type="number" id="app-price" placeholder="Ex: 450"></div>
   <div class="form-input-container"><label>Spécifications / Caractéristiques</label><i class="fa-solid fa-list-check"></i><input type="text" id="app-specs" placeholder="Ex: 2 Ch, 1 Salon, Électricité stable, Parking"></div>
 
-  <div class="surface-box">
-    <p class="gallery-label"><i class="fa-solid fa-images" style="color:var(--primary)"></i> Galerie d'images du bien (Jusqu'à 4 liens URL)</p>
-    <div class="form-input-container tight"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-1" placeholder="Lien URL de la Photo 1 (Obligatoire/Couverture)"></div>
-    <div class="form-input-container tight"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-2" placeholder="Lien URL de la Photo 2 (Optionnel)"></div>
-    <div class="form-input-container tight"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-3" placeholder="Lien URL de la Photo 3 (Optionnel)"></div>
-    <div class="form-input-container" style="margin-bottom:0;"><i class="fa-solid fa-image"></i><input type="url" id="app-photo-4" placeholder="Lien URL de la Photo 4 (Optionnel)"></div>
+  <div class="surface-box photo-upload-box">
+    <p class="gallery-label"><i class="fa-solid fa-images" style="color:var(--primary)"></i> Photos du logement (jusqu'à 7)</p>
+    <p class="muted-text">Choisissez entre 1 et 7 photos. KAZA les réduit avant de les envoyer pour économiser le stockage.</p>
+    <label class="photo-upload-picker" for="app-photos"><i class="fa-solid fa-cloud-arrow-up"></i> Choisir les photos</label>
+    <input type="file" id="app-photos" accept="image/jpeg,image/png,image/webp" multiple>
+    <p id="app-photo-count" class="photo-upload-count" aria-live="polite">0 / 7 photo</p>
+    <div id="app-photo-previews" class="photo-upload-preview-grid" aria-live="polite"></div>
+    <p id="app-photo-status" class="photo-upload-status" aria-live="polite"></p>
   </div>
 
   <button class="btn-submit-form owner-theme" id="btn-save-apartment" style="margin-bottom: 20px;">Enregistrer le bien</button>
