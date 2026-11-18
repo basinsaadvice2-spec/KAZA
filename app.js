@@ -3,7 +3,6 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, on
 import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
 
-// CONFIGURATION OFFICIELLE DU PROJET KAZA
 const firebaseConfig = {
   apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
   authDomain: "kaza-bf0dc.firebaseapp.com",
@@ -28,19 +27,18 @@ let state = {
     activeChatId: null
 };
 
-// NAVIGATION
 function showScreen(id) {
     document.querySelectorAll('.screen-view').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
 
-document.querySelectorAll('.role-card').forEach(btn => {
+document.querySelectorAll('.role-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         state.selectedRole = btn.dataset.role;
         localStorage.setItem('kaza_intended_role', state.selectedRole);
         const label = state.selectedRole === 'owner' ? 'Bailleur' : 'Locataire';
         document.getElementById('auth-title').innerText = `Connexion ${label}`;
-        document.getElementById('role-badge-text').innerText = label;
+        document.getElementById('role-security-info').innerText = `Espace réservé : ${label}`;
         showScreen('scr-auth');
     });
 });
@@ -52,11 +50,11 @@ document.getElementById('auth-toggle-link').addEventListener('click', () => {
     const label = state.selectedRole === 'owner' ? 'Bailleur' : 'Locataire';
     document.getElementById('register-fields').style.display = state.authMode === 'register' ? 'block' : 'none';
     document.getElementById('auth-title').innerText = `${state.authMode === 'login' ? 'Connexion' : 'Inscription'} ${label}`;
-    document.getElementById('btn-auth-submit').innerText = state.authMode === 'login' ? 'Se connecter' : 'Créer mon compte';
-    document.getElementById('auth-toggle-link').innerText = state.authMode === 'login' ? "Pas encore de compte ? Créer un compte" : "Déjà inscrit ? Se connecter";
+    document.getElementById('btn-auth-submit').innerText = state.authMode === 'login' ? 'Continuer' : 'Créer un compte';
+    document.getElementById('auth-toggle-link').innerText = state.authMode === 'login' ? "Pas encore de compte ? S'inscrire" : "Déjà inscrit ? Se connecter";
 });
 
-// AUTHENTIFICATION AVEC VERROUILLAGE STRICT DES RÔLES
+// AUTHENTIFICATION & VERROUILLAGE DES RÔLES
 document.getElementById('btn-auth-submit').addEventListener('click', async () => {
     const email = document.getElementById('auth-email').value.trim().toLowerCase();
     const pass = document.getElementById('auth-password').value;
@@ -66,7 +64,7 @@ document.getElementById('btn-auth-submit').addEventListener('click', async () =>
 
     const btn = document.getElementById('btn-auth-submit');
     btn.disabled = true;
-    btn.innerText = "Vérification sécurisée...";
+    btn.innerText = "Vérification...";
 
     try {
         if (state.authMode === 'register') {
@@ -74,26 +72,21 @@ document.getElementById('btn-auth-submit').addEventListener('click', async () =>
             const phone = document.getElementById('auth-phone').value.trim();
             if (!name || !phone) {
                 btn.disabled = false;
-                btn.innerText = "Créer mon compte";
-                return alert("Le nom complet et le numéro WhatsApp sont obligatoires.");
+                btn.innerText = "Créer un compte";
+                return alert("Nom complet et numéro WhatsApp obligatoires.");
             }
             const cred = await createUserWithEmailAndPassword(auth, email, pass);
             await setDoc(doc(db, "users", cred.user.uid), {
-                uid: cred.user.uid,
-                email,
-                name,
-                phone,
-                role: intendedRole,
-                createdAt: new Date().toISOString()
+                uid: cred.user.uid, email, name, phone, role: intendedRole, createdAt: new Date().toISOString()
             });
         } else {
             await signInWithEmailAndPassword(auth, email, pass);
         }
     } catch (e) {
-        alert("Erreur d'authentification : " + e.message);
+        alert("Erreur : " + e.message);
     } finally {
         btn.disabled = false;
-        btn.innerText = state.authMode === 'login' ? 'Se connecter' : 'Créer mon compte';
+        btn.innerText = state.authMode === 'login' ? 'Continuer' : 'Créer un compte';
     }
 });
 
@@ -104,7 +97,6 @@ document.querySelectorAll('.btn-logout').forEach(b => b.addEventListener('click'
 
 document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', () => document.body.classList.toggle('dark-mode')));
 
-// CONTRÔLE D'ACCÈS & SYNCHRONISATION TEMPS RÉEL
 onAuthStateChanged(auth, async (firebaseUser) => {
     if (!firebaseUser) {
         state.user = null;
@@ -114,18 +106,17 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
     if (!userSnap.exists()) {
         await signOut(auth);
-        return alert("Profil introuvable. Veuillez créer un compte.");
+        return alert("Profil introuvable.");
     }
 
     const userData = userSnap.data();
     const intendedRole = state.selectedRole || localStorage.getItem('kaza_intended_role');
 
-    // BOUCLIER ANTI-USURPATION DE RÔLE
     if (intendedRole && userData.role !== intendedRole) {
         const vraiRole = userData.role === 'owner' ? 'Bailleur' : 'Locataire';
         const porteTente = intendedRole === 'owner' ? 'Bailleur' : 'Locataire';
         await signOut(auth);
-        alert(`ACCÈS REFUSÉ : Ce compte est enregistré en tant que ${vraiRole}. Vous ne pouvez pas vous connecter via l'espace ${porteTente}.`);
+        alert(`Accès refusé : ce compte est enregistré comme ${vraiRole}. Veuillez vous connecter via l'espace ${vraiRole} (et non ${porteTente}).`);
         return showScreen('scr-role-select');
     }
 
@@ -134,11 +125,11 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     onSnapshot(collection(db, "apartments"), (snap) => {
         state.apartments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (state.user.role === 'tenant') {
-            const activeTab = document.querySelector('#scr-tenant .tab-btn.active')?.dataset.tab;
+            const activeTab = document.querySelector('#scr-tenant .tab-item.active')?.dataset.tab;
             if (activeTab === 'my-rental') renderMyRental();
             else if (activeTab !== 'tenant-chats') renderCatalog();
         } else {
-            const activeTab = document.querySelector('#scr-owner .tab-btn.active')?.dataset.tab;
+            const activeTab = document.querySelector('#scr-owner .tab-item.active')?.dataset.tab;
             if (activeTab === 'owner-apparts') renderOwnerApparts();
         }
     });
@@ -158,9 +149,9 @@ onAuthStateChanged(auth, async (firebaseUser) => {
 });
 
 // ================= ESPACE BAILLEUR =================
-document.querySelectorAll('#scr-owner .tab-btn').forEach(btn => {
+document.querySelectorAll('#scr-owner .tab-item').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('#scr-owner .tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#scr-owner .tab-item').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         if (btn.dataset.tab === 'owner-apparts') renderOwnerApparts();
         if (btn.dataset.tab === 'owner-add') renderAddAppartForm();
@@ -171,21 +162,23 @@ document.querySelectorAll('#scr-owner .tab-btn').forEach(btn => {
 
 function renderAddAppartForm() {
     document.getElementById('owner-content').innerHTML = `
-        <div class="appart-card" style="padding:16px;">
-            <h3>Publier un bien immobilier</h3>
-            <label>Titre de l'annonce</label>
-            <input type="text" id="new-title" placeholder="Ex: Appartement 2 chambres moderne">
+        <div class="card form-card">
+            <h3 style="margin-bottom:14px;">Nouveau bien immobilier</h3>
+            <div class="input-group">
+                <label>Titre de l'annonce</label>
+                <input type="text" id="new-title" placeholder="Ex: Appartement 2 chambres">
+            </div>
             
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div>
-                    <label>Type de bien</label>
+            <div class="filter-row">
+                <div class="input-group">
+                    <label>Type</label>
                     <select id="new-type">
                         <option value="Appartement">Appartement</option>
-                        <option value="Maison">Maison / Villa</option>
+                        <option value="Maison">Maison</option>
                         <option value="Studio">Studio</option>
                     </select>
                 </div>
-                <div>
+                <div class="input-group">
                     <label>Commune</label>
                     <select id="new-commune">
                         <option value="Gombe">Gombe</option><option value="Ngaliema">Ngaliema</option>
@@ -198,30 +191,32 @@ function renderAddAppartForm() {
                 </div>
             </div>
 
-            <label>Avenue, N° et Point de référence précis (Crucial pour Kinshasa)</label>
-            <input type="text" id="new-ref" placeholder="Ex: Av. Kasavubu N°12, Réf: À 3 min de l'arrêt Socimat">
+            <div class="input-group">
+                <label>Avenue et Point de référence</label>
+                <input type="text" id="new-ref" placeholder="Ex: Av. Kasavubu, Réf: Arrêt Socimat">
+            </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div>
-                    <label>Loyer Mensuel ($ USD)</label>
-                    <input type="number" id="new-price" placeholder="Ex: 350">
+            <div class="filter-row">
+                <div class="input-group">
+                    <label>Loyer Mensuel ($)</label>
+                    <input type="number" id="new-price" placeholder="350">
                 </div>
-                <div>
+                <div class="input-group">
                     <label>Garantie locative</label>
-                    <input type="text" id="new-garantie" placeholder="Ex: 3 mois + 1 mois">
+                    <input type="text" id="new-garantie" placeholder="Ex: 3 mois + 1">
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div>
+            <div class="filter-row">
+                <div class="input-group">
                     <label>Électricité (SNEL)</label>
                     <select id="new-snel">
-                        <option value="Cash Power">Cash Power (Prépayé)</option>
+                        <option value="Cash Power">Cash Power</option>
                         <option value="Forfait">Forfait SNEL</option>
-                        <option value="Groupe/Solaire">Avec Groupe / Solaire</option>
+                        <option value="Groupe/Solaire">Groupe / Solaire</option>
                     </select>
                 </div>
-                <div>
+                <div class="input-group">
                     <label>Accès Eau</label>
                     <select id="new-water">
                         <option value="Regideso">Regideso</option>
@@ -230,13 +225,17 @@ function renderAddAppartForm() {
                 </div>
             </div>
 
-            <label>Lien Google Maps (Optionnel)</label>
-            <input type="url" id="new-maps" placeholder="https://maps.google.com/...">
+            <div class="input-group">
+                <label>Lien Google Maps (Optionnel)</label>
+                <input type="url" id="new-maps" placeholder="https://maps.google.com/...">
+            </div>
 
-            <label>Photo du logement (Depuis votre galerie)</label>
-            <input type="file" id="new-photo" accept="image/*">
+            <div class="input-group">
+                <label>Photo du logement</label>
+                <input type="file" id="new-photo" accept="image/*">
+            </div>
 
-            <button id="btn-save-appart" class="btn-primary">Publier le bien</button>
+            <button id="btn-save-appart" class="btn-main">Publier l'annonce</button>
         </div>
     `;
 
@@ -244,10 +243,10 @@ function renderAddAppartForm() {
         const title = document.getElementById('new-title').value.trim();
         const price = Number(document.getElementById('new-price').value);
         const refPoint = document.getElementById('new-ref').value.trim();
-        if (!title || !price || !refPoint) return alert("Veuillez remplir le titre, le prix et l'adresse/référence.");
+        if (!title || !price || !refPoint) return alert("Remplissez le titre, le prix et la référence.");
 
         const btn = document.getElementById('btn-save-appart');
-        btn.innerText = "Téléversement et publication...";
+        btn.innerText = "Publication...";
         btn.disabled = true;
 
         try {
@@ -262,8 +261,7 @@ function renderAddAppartForm() {
 
             const id = "apt_" + Date.now();
             await setDoc(doc(db, "apartments", id), {
-                id,
-                title,
+                id, title,
                 type: document.getElementById('new-type').value,
                 commune: document.getElementById('new-commune').value,
                 price,
@@ -278,18 +276,15 @@ function renderAddAppartForm() {
                 ownerEmail: state.user.email,
                 ownerName: state.user.name,
                 ownerPhone: state.user.phone || "",
-                tenantUid: null,
-                tenantEmail: null,
-                tenantName: null,
-                paymentStatus: null,
-                receiptDate: null
+                tenantUid: null, tenantEmail: null, tenantName: null,
+                paymentStatus: null, receiptDate: null
             });
 
-            alert("Annonce publiée avec succès !");
-            document.querySelector('#scr-owner .tab-btn[data-tab="owner-apparts"]').click();
+            alert("Bien publié !");
+            document.querySelector('#scr-owner .tab-item[data-tab="owner-apparts"]').click();
         } catch (err) {
             alert("Erreur : " + err.message);
-            btn.innerText = "Publier le bien";
+            btn.innerText = "Publier l'annonce";
             btn.disabled = false;
         }
     });
@@ -299,29 +294,29 @@ function renderOwnerApparts() {
     const myApparts = state.apartments.filter(a => a.ownerEmail === state.user.email);
     const container = document.getElementById('owner-content');
     if (myApparts.length === 0) {
-        container.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:30px;">Vous n'avez encore publié aucun bien.</p>`;
+        container.innerHTML = `<p style="text-align:center; color:var(--text-sub); margin-top:32px; font-size:13px;">Aucun bien publié pour le moment.</p>`;
         return;
     }
 
     container.innerHTML = myApparts.map(a => `
-        <div class="appart-card">
-            <img src="${a.photoUrl}" class="appart-img">
-            <div class="appart-body">
-                <div class="appart-top">
-                    <h3>${a.title} <small style="font-weight:400; color:var(--text-muted);">(${a.type || 'Logement'})</small></h3>
-                    <span class="badge-status ${a.status === 'Disponible' ? 'status-dispo' : 'status-loue'}">${a.status}</span>
+        <div class="card">
+            <img src="${a.photoUrl}" class="listing-img">
+            <div class="listing-body">
+                <div class="listing-header">
+                    <h3>${a.title}</h3>
+                    <span class="status-pill ${a.status === 'Disponible' ? 'status-available' : 'status-rented'}">${a.status}</span>
                 </div>
-                <div class="appart-price">${a.price} $ / mois</div>
-                <p style="font-size:13px; color:var(--text-muted); margin-top:4px;"><i class="fa-solid fa-location-dot"></i> ${a.commune} — ${a.reference}</p>
+                <div class="price-tag" style="margin-top:4px;">${a.price} $ / mois</div>
+                <p class="location-text">${a.commune} — ${a.reference}</p>
                 
                 ${a.tenantName ? `
-                    <div style="margin-top:12px; padding:12px; background:var(--bg); border-radius:10px; font-size:13px;">
-                        <strong>Locataire actuel :</strong> ${a.tenantName} (${a.tenantEmail})<br>
-                        <strong>État du loyer :</strong> ${a.paymentStatus || 'En attente'}
-                        ${a.paymentStatus === 'Payé' ? `<button class="btn-primary" onclick="window.confirmPayment('${a.id}')">Confirmer réception & Générer Quittance</button>` : ''}
+                    <div style="margin-top:12px; padding:12px; background:var(--accent-soft); border-radius:10px; font-size:13px;">
+                        <strong>Locataire :</strong> ${a.tenantName}<br>
+                        <strong>Loyer :</strong> ${a.paymentStatus || 'En attente'}
+                        ${a.paymentStatus === 'Payé' ? `<button class="btn-main" style="margin-top:10px;" onclick="window.confirmPayment('${a.id}')">Valider réception & Quittance</button>` : ''}
                     </div>
                 ` : `
-                    <button class="btn-danger" onclick="window.deleteAppart('${a.id}')"><i class="fa-solid fa-trash"></i> Supprimer cette annonce</button>
+                    <button class="btn-danger-outline" onclick="window.deleteAppart('${a.id}')">Supprimer l'annonce</button>
                 `}
             </div>
         </div>
@@ -331,48 +326,39 @@ function renderOwnerApparts() {
 window.confirmPayment = async (id) => {
     const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
     await updateDoc(doc(db, "apartments", id), { paymentStatus: "Confirmé", receiptDate: dateStr });
-    alert("Réception confirmée ! La quittance officielle est générée pour votre locataire.");
+    alert("Loyer validé !");
 };
 
 window.deleteAppart = async (id) => {
-    if (!confirm("Supprimer définitivement ce bien ?")) return;
+    if (!confirm("Supprimer ce bien ?")) return;
     await deleteDoc(doc(db, "apartments", id));
 };
 
-// DIFFUSION GROUPÉE STYLE WHATSAPP AUX LOCATAIRES
 function renderBroadcastView() {
     const myTenants = state.apartments.filter(a => a.ownerEmail === state.user.email && a.tenantEmail);
-    const container = document.getElementById('owner-content');
-    container.innerHTML = `
-        <div class="appart-card" style="padding:16px;">
-            <h3><i class="fa-solid fa-bullhorn"></i> Diffusion aux Locataires</h3>
-            <p style="font-size:13px; color:var(--text-muted); margin:6px 0 12px;">Envoyez un avis général (coupure d'eau, travaux, rappel de loyer) à vos <strong>${myTenants.length}</strong> locataire(s) actif(s) en un clic.</p>
-            <textarea id="broadcast-msg" rows="4" placeholder="Écrivez votre communiqué ici..."></textarea>
-            <button id="btn-send-broadcast" class="btn-primary">Diffuser le message</button>
+    document.getElementById('owner-content').innerHTML = `
+        <div class="card form-card">
+            <h3 style="margin-bottom:6px;">Diffusion aux Locataires</h3>
+            <p style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">Envoyer un message groupé à vos ${myTenants.length} locataire(s) actif(s).</p>
+            <div class="input-group">
+                <textarea id="broadcast-msg" rows="4" placeholder="Écrivez votre message..."></textarea>
+            </div>
+            <button id="btn-send-broadcast" class="btn-main">Envoyer à tous</button>
         </div>
     `;
 
     document.getElementById('btn-send-broadcast').addEventListener('click', async () => {
         const txt = document.getElementById('broadcast-msg').value.trim();
-        if (!txt) return alert("Écrivez un message avant de diffuser.");
-        if (myTenants.length === 0) return alert("Vous n'avez aucun locataire actif pour le moment.");
-
+        if (!txt || myTenants.length === 0) return alert("Message vide ou aucun locataire actif.");
         for (const apt of myTenants) {
             const chatId = `${apt.tenantEmail}_${state.user.email}`.replace(/[.@]/g, '_');
             const chatRef = doc(db, "chats", chatId);
             const snap = await getDoc(chatRef);
-            const msgObj = { sender: state.user.email, text: `📢 [COMMUNIQUÉ BAILLEUR] : ${txt}`, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-            if (snap.exists()) {
-                await updateDoc(chatRef, { messages: arrayUnion(msgObj) });
-            } else {
-                await setDoc(chatRef, {
-                    id: chatId, tenantEmail: apt.tenantEmail, tenantName: apt.tenantName,
-                    ownerEmail: state.user.email, ownerName: state.user.name, context: apt.title,
-                    messages: [msgObj]
-                });
-            }
+            const msgObj = { sender: state.user.email, text: `[Communiqué] ${txt}`, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+            if (snap.exists()) await updateDoc(chatRef, { messages: arrayUnion(msgObj) });
+            else await setDoc(chatRef, { id: chatId, tenantEmail: apt.tenantEmail, tenantName: apt.tenantName, ownerEmail: state.user.email, ownerName: state.user.name, context: apt.title, messages: [msgObj] });
         }
-        alert(`Message diffusé avec succès à ${myTenants.length} locataire(s) !`);
+        alert("Message diffusé !");
         document.getElementById('broadcast-msg').value = "";
     });
 }
@@ -382,9 +368,9 @@ function renderBroadcastView() {
     document.getElementById(id).addEventListener('input', renderCatalog);
 });
 
-document.querySelectorAll('#scr-tenant .tab-btn').forEach(btn => {
+document.querySelectorAll('#scr-tenant .tab-item').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('#scr-tenant .tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#scr-tenant .tab-item').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tenant-search-panel').style.display = btn.dataset.tab === 'catalog' ? 'block' : 'none';
         if (btn.dataset.tab === 'catalog') renderCatalog();
@@ -414,39 +400,40 @@ function renderCatalog() {
 
     const container = document.getElementById('tenant-content');
     if (filtered.length === 0) {
-        container.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:30px;">Aucun logement disponible ne correspond à vos critères.</p>`;
+        container.innerHTML = `<p style="text-align:center; color:var(--text-sub); margin-top:32px; font-size:13px;">Aucun logement disponible pour ces critères.</p>`;
         return;
     }
 
     container.innerHTML = filtered.map(a => {
         const cleanPhone = (a.ownerPhone || "").replace(/[^0-9]/g, '');
-        const waMsg = encodeURIComponent(`Bonjour ${a.ownerName}, je suis intéressé par votre bien "${a.title}" à ${a.commune} (${a.price}$/mois) vu sur Kaza.`);
+        const waMsg = encodeURIComponent(`Bonjour ${a.ownerName}, je suis intéressé par votre bien "${a.title}" à ${a.commune} (${a.price}$/mois) sur Kaza.`);
         return `
-        <div class="appart-card">
-            <img src="${a.photoUrl}" class="appart-img">
-            <div class="appart-body">
-                <div class="appart-top">
+        <div class="card">
+            <img src="${a.photoUrl}" class="listing-img">
+            <div class="listing-body">
+                <div class="listing-header">
                     <h3>${a.title}</h3>
-                    <span class="appart-price">${a.price} $</span>
+                    <span class="price-tag">${a.price} $</span>
                 </div>
-                <p style="font-size:13px; color:var(--text-muted);"><i class="fa-solid fa-location-dot"></i> <strong>${a.commune}</strong> — ${a.reference}</p>
-                ${a.mapsUrl ? `<a href="${a.mapsUrl}" target="_blank" class="btn-maps"><i class="fa-solid fa-map-location-dot"></i> Voir l'itinéraire Google Maps</a>` : ''}
+                <p class="location-text">${a.commune} — ${a.reference}</p>
+                ${a.mapsUrl ? `<a href="${a.mapsUrl}" target="_blank" class="maps-link">Voir sur Google Maps</a>` : ''}
                 
-                <div class="kin-badges">
-                    <span class="kin-badge"><i class="fa-solid fa-house"></i> ${a.type || 'Logement'}</span>
-                    <span class="kin-badge"><i class="fa-solid fa-bolt"></i> ${a.snel}</span>
-                    <span class="kin-badge"><i class="fa-solid fa-droplet"></i> ${a.water}</span>
-                    <span class="kin-badge"><i class="fa-solid fa-shield-halved"></i> Garantie : ${a.garantie}</span>
+                <div class="specs-list">
+                    <span class="spec-pill">${a.type || 'Logement'}</span>
+                    <span class="spec-pill">${a.snel}</span>
+                    <span class="spec-pill">${a.water}</span>
+                    <span class="spec-pill">Garantie : ${a.garantie}</span>
                 </div>
 
-                <div class="action-row">
-                    ${cleanPhone ? `<a href="tel:+${cleanPhone}" class="btn-call"><i class="fa-solid fa-phone"></i> Appeler</a>` : '<div></div>'}
-                    ${cleanPhone ? `<a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="btn-wa"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : '<div></div>'}
-                </div>
+                ${cleanPhone ? `
+                <div class="btn-group-row">
+                    <a href="tel:+${cleanPhone}" class="btn-contact"><i class="fa-solid fa-phone"></i> Appeler</a>
+                    <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="btn-contact"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+                </div>` : ''}
 
-                <div class="action-row">
-                    <button class="btn-secondary" onclick="window.openChat('${a.ownerEmail}', '${a.ownerName}', '${a.title}')"><i class="fa-solid fa-comment"></i> Chat Kaza</button>
-                    <button class="btn-primary" style="margin-top:0;" onclick="window.bookAppart('${a.id}')">Réserver</button>
+                <div class="btn-group-row">
+                    <button class="btn-outline" onclick="window.openChat('${a.ownerEmail}', '${a.ownerName}', '${a.title}')">Message</button>
+                    <button class="btn-main" onclick="window.bookAppart('${a.id}')">Réserver</button>
                 </div>
             </div>
         </div>`;
@@ -456,55 +443,45 @@ function renderCatalog() {
 window.bookAppart = async (id) => {
     if (!confirm("Confirmer la réservation de ce logement ?")) return;
     await updateDoc(doc(db, "apartments", id), {
-        status: "Loué",
-        tenantUid: state.user.uid,
-        tenantEmail: state.user.email,
-        tenantName: state.user.name,
-        paymentStatus: "En attente"
+        status: "Loué", tenantUid: state.user.uid, tenantEmail: state.user.email, tenantName: state.user.name, paymentStatus: "En attente"
     });
-    alert("Logement réservé ! Retrouvez-le dans 'Mon Logement'.");
+    alert("Logement réservé !");
 };
 
 function renderMyRental() {
     const mine = state.apartments.filter(a => a.tenantEmail === state.user.email);
     const container = document.getElementById('tenant-content');
     if (mine.length === 0) {
-        container.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:30px;">Vous n'occupez aucun logement actuellement.</p>`;
+        container.innerHTML = `<p style="text-align:center; color:var(--text-sub); margin-top:32px; font-size:13px;">Vous n'occupez aucun logement actuellement.</p>`;
         return;
     }
 
     container.innerHTML = mine.map(a => `
-        <div class="appart-card" style="padding:16px;">
+        <div class="card form-card">
             <h3>${a.title} (${a.commune})</h3>
-            <p style="color:var(--accent); font-weight:700; margin:6px 0;">Loyer : ${a.price} $ / mois</p>
-            <p style="font-size:13px;">Bailleur : ${a.ownerName}</p>
-            <p style="font-size:13px; margin-top:6px;">Statut du loyer : <strong>${a.paymentStatus}</strong></p>
+            <p class="price-tag" style="margin:6px 0;">${a.price} $ / mois</p>
+            <p style="font-size:13px; color:var(--text-sub);">Bailleur : ${a.ownerName}</p>
+            <p style="font-size:13px; margin:8px 0 14px;">Statut loyer : <strong>${a.paymentStatus}</strong></p>
             
-            ${a.paymentStatus !== 'Confirmé' ? `<button class="btn-primary" onclick="window.notifyRentPaid('${a.id}')">Signaler le paiement du loyer</button>` : ''}
-            ${a.paymentStatus === 'Confirmé' ? `<button class="btn-primary" style="background:var(--accent);" onclick="window.viewReceipt('${a.id}')"><i class="fa-solid fa-file-invoice"></i> Voir ma Quittance Officielle</button>` : ''}
+            ${a.paymentStatus !== 'Confirmé' ? `<button class="btn-main" onclick="window.notifyRentPaid('${a.id}')">Signaler le paiement du loyer</button>` : ''}
+            ${a.paymentStatus === 'Confirmé' ? `<button class="btn-main" onclick="window.viewReceipt('${a.id}')">Afficher ma quittance</button>` : ''}
             
-            <button class="btn-danger" onclick="window.leaveAppart('${a.id}')"><i class="fa-solid fa-door-open"></i> Signaler mon départ (Libérer le bien)</button>
+            <button class="btn-danger-outline" onclick="window.leaveAppart('${a.id}')">Signaler mon départ</button>
         </div>
     `).join('');
 }
 
 window.notifyRentPaid = async (id) => {
     await updateDoc(doc(db, "apartments", id), { paymentStatus: "Payé" });
-    alert("Paiement signalé ! En attente de validation par votre bailleur.");
+    alert("Paiement signalé au bailleur.");
     renderMyRental();
 };
 
 window.leaveAppart = async (id) => {
-    if (!confirm("Voulez-vous vraiment libérer ce logement ? Il redeviendra disponible dans le catalogue.")) return;
+    if (!confirm("Libérer ce logement ?")) return;
     await updateDoc(doc(db, "apartments", id), {
-        status: "Disponible",
-        tenantUid: null,
-        tenantEmail: null,
-        tenantName: null,
-        paymentStatus: null,
-        receiptDate: null
+        status: "Disponible", tenantUid: null, tenantEmail: null, tenantName: null, paymentStatus: null, receiptDate: null
     });
-    alert("Logement libéré avec succès.");
     renderMyRental();
 };
 
@@ -512,12 +489,12 @@ window.viewReceipt = (id) => {
     const a = state.apartments.find(x => x.id === id);
     if (!a) return;
     document.getElementById('receipt-body').innerHTML = `
-        <p><strong>Réf. Quittance :</strong> KZ-${a.id.slice(-6)}</p>
-        <p><strong>Date de validation :</strong> ${a.receiptDate || new Date().toLocaleDateString('fr-FR')}</p>
+        <p><strong>Référence :</strong> KZ-${a.id.slice(-6)}</p>
+        <p><strong>Date :</strong> ${a.receiptDate || new Date().toLocaleDateString('fr-FR')}</p>
         <p><strong>Locataire :</strong> ${a.tenantName}</p>
         <p><strong>Bailleur :</strong> ${a.ownerName}</p>
-        <p><strong>Bien loué :</strong> ${a.title} (${a.commune})</p>
-        <p style="font-size:16px; color:var(--accent); margin-top:10px;"><strong>Montant réglé : ${a.price} $ USD</strong></p>
+        <p><strong>Logement :</strong> ${a.title} (${a.commune})</p>
+        <p style="margin-top:10px;"><strong>Montant réglé : ${a.price} $ USD</strong></p>
     `;
     document.getElementById('receipt-modal').style.display = 'flex';
 };
@@ -526,20 +503,16 @@ document.getElementById('btn-close-receipt').addEventListener('click', () => {
     document.getElementById('receipt-modal').style.display = 'none';
 });
 
-// ================= MESSAGERIE INTERNE =================
+// ================= MESSAGERIE =================
 window.openChat = async (ownerEmail, ownerName, title) => {
     const chatId = `${state.user.email}_${ownerEmail}`.replace(/[.@]/g, '_');
     const chatRef = doc(db, "chats", chatId);
     const snap = await getDoc(chatRef);
     if (!snap.exists()) {
         await setDoc(chatRef, {
-            id: chatId,
-            tenantEmail: state.user.email,
-            tenantName: state.user.name,
-            ownerEmail,
-            ownerName,
-            context: title,
-            messages: [{ sender: "system", text: `Discussion ouverte pour : ${title}`, time: "" }]
+            id: chatId, tenantEmail: state.user.email, tenantName: state.user.name,
+            ownerEmail, ownerName, context: title,
+            messages: [{ sender: "system", text: `Discussion : ${title}`, time: "" }]
         });
     }
     state.activeChatId = chatId;
@@ -553,15 +526,15 @@ function renderChatList(containerId) {
     const myChats = state.chats.filter(c => state.user.role === 'owner' ? c.ownerEmail === state.user.email : c.tenantEmail === state.user.email);
     const container = document.getElementById(containerId);
     if (myChats.length === 0) {
-        container.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:30px;">Aucune conversation.</p>`;
+        container.innerHTML = `<p style="text-align:center; color:var(--text-sub); margin-top:32px; font-size:13px;">Aucune conversation.</p>`;
         return;
     }
     container.innerHTML = myChats.map(c => {
         const name = state.user.role === 'owner' ? c.tenantName : c.ownerName;
         return `
-        <div class="appart-card" style="padding:14px; cursor:pointer;" onclick="window.enterRoom('${c.id}', '${name}', '${c.context}')">
-            <h4>${name}</h4>
-            <small style="color:var(--primary);">${c.context}</small>
+        <div class="card form-card" style="cursor:pointer; margin-bottom:10px;" onclick="window.enterRoom('${c.id}', '${name}', '${c.context}')">
+            <h4 style="font-size:14px;">${name}</h4>
+            <span style="font-size:12px; color:var(--text-sub);">${c.context}</span>
         </div>`;
     }).join('');
 }
@@ -579,9 +552,9 @@ function renderChatMessages() {
     if (!chat) return;
     const box = document.getElementById('chat-messages-container');
     box.innerHTML = chat.messages.map(m => {
-        if (m.sender === 'system') return `<div style="text-align:center; font-size:11px; color:var(--text-muted);">${m.text}</div>`;
+        if (m.sender === 'system') return `<div style="text-align:center; font-size:11px; color:var(--text-sub);">${m.text}</div>`;
         const isMe = m.sender === state.user.email;
-        return `<div class="msg-bubble ${isMe ? 'msg-out' : 'msg-in'}">${m.text}</div>`;
+        return `<div class="bubble ${isMe ? 'bubble-me' : 'bubble-other'}">${m.text}</div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
 }
