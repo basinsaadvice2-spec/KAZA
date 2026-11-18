@@ -3,89 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1e3a8a">
-    <title>Kaza — L'immobilier à Kinshasa</title>
+    <meta name="theme-color" content="#0f172a">
+    <title>Kaza</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <!-- ÉCRAN 1 : CHOIX DU RÔLE -->
+    <!-- ÉCRAN 1 : ACCUEIL & SÉLECTION DU RÔLE (DESIGN ORIGINAL) -->
     <section id="scr-role-select" class="screen-view active">
-        <div class="hero-box">
-            <div class="logo-badge"><i class="fa-solid fa-building-user"></i></div>
-            <h1>Kaza</h1>
-            <p>La plateforme immobilière sécurisée de Kinshasa. Propriétaires et locataires connectés en temps réel.</p>
+        <div class="welcome-wrapper">
+            <div class="brand-header">
+                <div class="brand-icon"><i class="fa-solid fa-house-chimney"></i></div>
+                <h1>Kaza</h1>
+                <p>Gestion immobilière simple et directe</p>
+            </div>
             
-            <div class="role-cards">
-                <button class="role-card" data-role="tenant">
-                    <i class="fa-solid fa-magnifying-glass-location"></i>
-                    <div>
-                        <h3>Espace Locataire</h3>
-                        <span>Chercher un logement (SNEL, Eau, Réf, Prix...) et gérer mon loyer</span>
+            <div class="role-selection-list">
+                <button class="role-btn" data-role="tenant">
+                    <div class="role-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                    <div class="role-info">
+                        <h3>Locataire</h3>
+                        <p>Trouver un logement et gérer mon loyer</p>
                     </div>
+                    <i class="fa-solid fa-chevron-right arrow"></i>
                 </button>
-                <button class="role-card" data-role="owner">
-                    <i class="fa-solid fa-key"></i>
-                    <div>
-                        <h3>Espace Bailleur</h3>
-                        <span>Publier mes biens, valider les loyers et diffuser aux locataires</span>
+
+                <button class="role-btn" data-role="owner">
+                    <div class="role-icon"><i class="fa-solid fa-key"></i></div>
+                    <div class="role-info">
+                        <h3>Bailleur</h3>
+                        <p>Gérer mes biens et mes locataires</p>
                     </div>
+                    <i class="fa-solid fa-chevron-right arrow"></i>
                 </button>
             </div>
         </div>
     </section>
 
-    <!-- ÉCRAN 2 : AUTHENTIFICATION SÉCURISÉE -->
+    <!-- ÉCRAN 2 : CONNEXION / INSCRIPTION -->
     <section id="scr-auth" class="screen-view">
-        <header class="top-bar">
-            <button class="btn-icon" id="btn-back-role"><i class="fa-solid fa-arrow-left"></i></button>
+        <header class="app-header">
+            <button class="icon-btn" id="btn-back-role"><i class="fa-solid fa-arrow-left"></i></button>
             <h2 id="auth-title">Connexion</h2>
-            <div style="width:36px"></div>
+            <div style="width: 36px;"></div>
         </header>
-        <div class="form-container">
-            <div class="security-notice">
-                <i class="fa-solid fa-shield-halved"></i> Accès strictement réservé aux comptes <strong id="role-badge-text">Locataire</strong>.
-            </div>
 
-            <div id="register-fields" style="display: none;">
-                <label>Nom complet ou Agence</label>
-                <input type="text" id="auth-name" placeholder="Ex: Patrick Kabongo">
+        <div class="container">
+            <div class="card form-card">
+                <p id="role-security-info" class="subtitle-info">Espace réservé : Locataire</p>
+
+                <div id="register-fields" style="display: none;">
+                    <div class="input-group">
+                        <label>Nom complet</label>
+                        <input type="text" id="auth-name" placeholder="Ex: Patrick Kabongo">
+                    </div>
+                    <div class="input-group">
+                        <label>Téléphone (WhatsApp)</label>
+                        <input type="tel" id="auth-phone" placeholder="Ex: +243810000000">
+                    </div>
+                </div>
                 
-                <label>Téléphone WhatsApp (avec indicatif)</label>
-                <input type="tel" id="auth-phone" placeholder="Ex: +243810000000">
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="auth-email" placeholder="exemple@email.com">
+                </div>
+                
+                <div class="input-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="auth-password" placeholder="••••••">
+                </div>
+                
+                <button id="btn-auth-submit" class="btn-main">Continuer</button>
+                <p id="auth-toggle-link" class="link-text">Pas encore de compte ? S'inscrire</p>
             </div>
-            
-            <label>Adresse Email</label>
-            <input type="email" id="auth-email" placeholder="exemple@email.com">
-            
-            <label>Mot de passe</label>
-            <input type="password" id="auth-password" placeholder="Minimum 6 caractères">
-            
-            <button id="btn-auth-submit" class="btn-primary">Se connecter</button>
-            <p id="auth-toggle-link" class="toggle-link">Pas encore de compte ? Créer un compte</p>
         </div>
     </section>
 
     <!-- ÉCRAN 3 : ESPACE LOCATAIRE -->
     <section id="scr-tenant" class="screen-view">
-        <header class="top-bar">
-            <h2><i class="fa-solid fa-house-chimney"></i> Kaza Locataire</h2>
-            <div class="header-actions">
-                <button class="btn-icon theme-toggle" title="Mode Sombre"><i class="fa-solid fa-moon"></i></button>
-                <button class="btn-icon btn-logout" title="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button>
+        <header class="app-header">
+            <div class="header-brand">
+                <i class="fa-solid fa-house-chimney"></i>
+                <span>Kaza</span>
+            </div>
+            <div class="header-tools">
+                <button class="icon-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
+                <button class="icon-btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
         </header>
 
-        <!-- RECHERCHE MULTICRITÈRE KINSHASA -->
-        <div class="search-panel" id="tenant-search-panel">
-            <div class="search-input-box">
-                <i class="fa-solid fa-location-dot"></i>
-                <input type="text" id="filter-search" placeholder="Avenue, quartier ou point de référence (ex: Socimat, Victoire)...">
+        <div class="tabs-bar">
+            <button class="tab-item active" data-tab="catalog">Catalogue</button>
+            <button class="tab-item" data-tab="my-rental">Mon Logement</button>
+            <button class="tab-item" data-tab="tenant-chats">Messages</button>
+        </div>
+
+        <!-- BARRE DE RECHERCHE ET FILTRES ÉPURÉS -->
+        <div class="filter-bar" id="tenant-search-panel">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="filter-search" placeholder="Avenue, commune ou référence (ex: Socimat)...">
             </div>
-            <div class="filters-grid">
+            <div class="filter-row">
                 <select id="filter-commune">
-                    <option value="">Toutes les communes</option>
+                    <option value="">Commune (Toutes)</option>
                     <option value="Gombe">Gombe</option>
                     <option value="Ngaliema">Ngaliema</option>
                     <option value="Limete">Limete</option>
@@ -98,86 +120,86 @@
                     <option value="Masina">Masina</option>
                     <option value="Ndjili">Ndjili</option>
                     <option value="Mont-Ngafula">Mont-Ngafula</option>
-                    <option value="Barumbu">Barumbu</option>
-                    <option value="Kinshasa">Kinshasa</option>
                 </select>
                 <select id="filter-type">
-                    <option value="">Tous types de biens</option>
+                    <option value="">Type (Tous)</option>
                     <option value="Appartement">Appartement</option>
-                    <option value="Maison">Maison / Villa</option>
+                    <option value="Maison">Maison</option>
                     <option value="Studio">Studio</option>
                 </select>
-                <input type="number" id="filter-max-price" placeholder="Budget Max ($)">
+            </div>
+            <div class="filter-row" style="margin-top: 8px;">
+                <input type="number" id="filter-max-price" placeholder="Prix Max ($)">
                 <select id="filter-snel">
-                    <option value="">Électricité (Tout)</option>
-                    <option value="Cash Power">Cash Power (Prépayé)</option>
+                    <option value="">Électricité (Toutes)</option>
+                    <option value="Cash Power">Cash Power</option>
                     <option value="Forfait">Forfait SNEL</option>
-                    <option value="Groupe/Solaire">Avec Groupe / Solaire</option>
+                    <option value="Groupe/Solaire">Groupe / Solaire</option>
                 </select>
-                <select id="filter-water" style="grid-column: span 2;">
-                    <option value="">Accès Eau (Tout)</option>
+                <select id="filter-water">
+                    <option value="">Eau (Toutes)</option>
                     <option value="Regideso">Regideso</option>
-                    <option value="Forage/Citerne">Forage / Citerne (Eau 24h/24)</option>
+                    <option value="Forage/Citerne">Forage / Citerne</option>
                 </select>
             </div>
         </div>
 
-        <nav class="tab-nav">
-            <button class="tab-btn active" data-tab="catalog">Catalogue</button>
-            <button class="tab-btn" data-tab="my-rental">Mon Logement</button>
-            <button class="tab-btn" data-tab="tenant-chats">Messages</button>
-        </nav>
-
-        <div id="tenant-content" class="content-area"></div>
+        <main id="tenant-content" class="container"></main>
     </section>
 
     <!-- ÉCRAN 4 : ESPACE BAILLEUR -->
     <section id="scr-owner" class="screen-view">
-        <header class="top-bar">
-            <h2><i class="fa-solid fa-building"></i> Kaza Bailleur</h2>
-            <div class="header-actions">
-                <button class="btn-icon theme-toggle" title="Mode Sombre"><i class="fa-solid fa-moon"></i></button>
-                <button class="btn-icon btn-logout" title="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button>
+        <header class="app-header">
+            <div class="header-brand">
+                <i class="fa-solid fa-key"></i>
+                <span>Kaza Bailleur</span>
+            </div>
+            <div class="header-tools">
+                <button class="icon-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
+                <button class="icon-btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
         </header>
 
-        <nav class="tab-nav">
-            <button class="tab-btn active" data-tab="owner-apparts">Mes Biens</button>
-            <button class="tab-btn" data-tab="owner-add">+ Publier</button>
-            <button class="tab-btn" data-tab="owner-broadcast">Diffusion</button>
-            <button class="tab-btn" data-tab="owner-chats">Messages</button>
-        </nav>
+        <div class="tabs-bar">
+            <button class="tab-item active" data-tab="owner-apparts">Mes Biens</button>
+            <button class="tab-item" data-tab="owner-add">+ Publier</button>
+            <button class="tab-item" data-tab="owner-broadcast">Diffusion</button>
+            <button class="tab-item" data-tab="owner-chats">Messages</button>
+        </div>
 
-        <div id="owner-content" class="content-area"></div>
+        <main id="owner-content" class="container"></main>
     </section>
 
-    <!-- ÉCRAN 5 : SALON DE DISCUSSION PRIVÉ -->
+    <!-- ÉCRAN 5 : MESSAGERIE PRIVÉE -->
     <section id="scr-chat-room" class="screen-view">
-        <header class="top-bar">
-            <button class="btn-icon" id="btn-close-chat"><i class="fa-solid fa-arrow-left"></i></button>
-            <div style="flex:1; margin-left:10px;">
-                <h3 id="chat-room-title" style="font-size:15px;">Discussion</h3>
-                <small id="chat-room-subtitle" style="color:var(--text-muted); font-size:11px;"></small>
+        <header class="app-header">
+            <button class="icon-btn" id="btn-close-chat"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="chat-header-info">
+                <h3 id="chat-room-title">Discussion</h3>
+                <span id="chat-room-subtitle"></span>
             </div>
+            <div style="width: 36px;"></div>
         </header>
-        <div id="chat-messages-container" class="chat-box"></div>
-        <div class="chat-input-bar">
-            <input type="text" id="chat-input-field" placeholder="Écrire un message...">
-            <button id="btn-send-msg" class="btn-primary" style="width:auto; padding:10px 16px; margin-top:0;"><i class="fa-solid fa-paper-plane"></i></button>
+
+        <div id="chat-messages-container" class="chat-messages"></div>
+
+        <div class="chat-footer">
+            <input type="text" id="chat-input-field" placeholder="Votre message...">
+            <button id="btn-send-msg" class="btn-send"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </section>
 
-    <!-- MODALE QUITTANCE OFFICIELLE -->
-    <div id="receipt-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-card" id="receipt-printable">
-            <div class="receipt-header">
-                <h3><i class="fa-solid fa-file-invoice-dollar"></i> QUITTANCE DE LOYER</h3>
-                <span class="badge-valid">PAYÉ & VALIDÉ</span>
+    <!-- MODALE QUITTANCE DE LOYER -->
+    <div id="receipt-modal" class="modal-backdrop" style="display:none;">
+        <div class="card modal-box" id="receipt-printable">
+            <div class="receipt-top">
+                <h3>Quittance de Loyer</h3>
+                <span class="tag-success">Payé & Validé</span>
             </div>
-            <div id="receipt-body" class="receipt-details"></div>
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button onclick="window.print()" class="btn-primary" style="margin-top:0;"><i class="fa-solid fa-print"></i> Imprimer / PDF</button>
-                <button id="btn-close-receipt" class="btn-secondary">Fermer</button>
+            <div id="receipt-body" class="receipt-content"></div>
+            <div class="btn-group-row">
+                <button onclick="window.print()" class="btn-main">Imprimer / PDF</button>
+                <button id="btn-close-receipt" class="btn-outline">Fermer</button>
             </div>
         </div>
     </div>
