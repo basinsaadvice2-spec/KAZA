@@ -1,45 +1,16 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    function signedInAsPathOwner(ownerId) {
-      return request.auth != null && request.auth.uid == ownerId;
-    }
-
-    // Listing photos are public because they appear in the public housing catalog.
-    // Only the account whose UID is in the path can add or remove its own images.
-    match /apartments/{ownerId}/{apartmentId}/{fileName} {
+    match /apartments/{userId}/{allPaths=**} {
+      // Tout le monde peut afficher les photos des annonces
       allow read: if true;
-      allow create: if signedInAsPathOwner(ownerId)
-        && request.resource.size <= 1 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|webp)');
-      allow update: if false;
-      allow delete: if signedInAsPathOwner(ownerId);
-    }
-
-    function leaseDocument(leaseId) {
-      return /databases/(default)/documents/leases/$(leaseId);
-    }
-
-    function isLeaseParticipant(leaseId) {
-      return request.auth != null
-        && firestore.exists(leaseDocument(leaseId))
-        && (
-          request.auth.uid == firestore.get(leaseDocument(leaseId)).data.ownerId
-          || request.auth.uid == firestore.get(leaseDocument(leaseId)).data.tenantId
-        );
-    }
-
-    // Payment receipts are private to the two people named on the lease.
-    match /payment-proofs/{leaseId}/{tenantId}/{fileName} {
-      allow read: if isLeaseParticipant(leaseId);
-      allow create: if isLeaseParticipant(leaseId)
-        && request.auth.uid == tenantId
-        && firestore.get(leaseDocument(leaseId)).data.tenantId == tenantId
-        && request.resource.size <= 1 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|webp)');
-      allow update: if false;
-      allow delete: if isLeaseParticipant(leaseId);
+      
+      // Seul le propriétaire connecté peut uploader dans son dossier,
+      // uniquement une image (JPG, PNG, WEBP...) de moins de 5 Mo
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
   }
 }
