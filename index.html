@@ -3,203 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
-    <title>Kaza</title>
+    <meta name="theme-color" content="#6d28d9">
+    <title>Kaza — L'immobilier à Kinshasa</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <!-- ÉCRAN 1 : ACCUEIL & SÉLECTION DU RÔLE (DESIGN ORIGINAL) -->
+    <!-- ÉCRAN 1 : SÉLECTION DU RÔLE -->
     <section id="scr-role-select" class="screen-view active">
-        <div class="welcome-wrapper">
-            <div class="brand-header">
-                <div class="brand-icon"><i class="fa-solid fa-house-chimney"></i></div>
-                <h1>Kaza</h1>
-                <p>Gestion immobilière simple et directe</p>
-            </div>
-            
-            <div class="role-selection-list">
-                <button class="role-btn" data-role="tenant">
-                    <div class="role-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
-                    <div class="role-info">
-                        <h3>Locataire</h3>
-                        <p>Trouver un logement et gérer mon loyer</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-right arrow"></i>
-                </button>
+        <div class="role-selection-layout">
+            <div class="app-brand-logo">Kaza</div>
+            <p class="app-brand-tagline">L'immobilier simple et sécurisé à Kinshasa</p>
 
-                <button class="role-btn" data-role="owner">
-                    <div class="role-icon"><i class="fa-solid fa-key"></i></div>
-                    <div class="role-info">
-                        <h3>Bailleur</h3>
-                        <p>Gérer mes biens et mes locataires</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-right arrow"></i>
-                </button>
+            <div class="role-interactive-card" data-role="tenant">
+                <div class="role-card-icon tenant"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <h3>Espace Locataire</h3>
+                <p>Explorez les logements par commune, budget, SNEL, eau et gérez votre loyer.</p>
+            </div>
+
+            <div class="role-interactive-card" data-role="owner">
+                <div class="role-card-icon owner"><i class="fa-solid fa-key"></i></div>
+                <h3>Espace Bailleur</h3>
+                <p>Publiez vos biens, suivez vos revenus locatifs et validez les paiements.</p>
             </div>
         </div>
     </section>
 
-    <!-- ÉCRAN 2 : CONNEXION / INSCRIPTION -->
+    <!-- ÉCRAN 2 : AUTHENTIFICATION -->
     <section id="scr-auth" class="screen-view">
-        <header class="app-header">
-            <button class="icon-btn" id="btn-back-role"><i class="fa-solid fa-arrow-left"></i></button>
-            <h2 id="auth-title">Connexion</h2>
-            <div style="width: 36px;"></div>
-        </header>
-
-        <div class="container">
-            <div class="card form-card">
-                <p id="role-security-info" class="subtitle-info">Espace réservé : Locataire</p>
-
-                <div id="register-fields" style="display: none;">
-                    <div class="input-group">
-                        <label>Nom complet</label>
-                        <input type="text" id="auth-name" placeholder="Ex: Patrick Kabongo">
-                    </div>
-                    <div class="input-group">
-                        <label>Téléphone (WhatsApp)</label>
-                        <input type="tel" id="auth-phone" placeholder="Ex: +243810000000">
-                    </div>
-                </div>
-                
-                <div class="input-group">
-                    <label>Email</label>
-                    <input type="email" id="auth-email" placeholder="exemple@email.com">
-                </div>
-                
-                <div class="input-group">
-                    <label>Mot de passe</label>
-                    <input type="password" id="auth-password" placeholder="••••••">
-                </div>
-                
-                <button id="btn-auth-submit" class="btn-main">Continuer</button>
-                <p id="auth-toggle-link" class="link-text">Pas encore de compte ? S'inscrire</p>
+        <div class="dashboard-ui-header">
+            <button class="circle-action-btn" id="btn-back-role"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="header-utility-actions">
+                <button class="circle-action-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
             </div>
         </div>
+
+        <h2 class="auth-title" id="auth-title">Connexion</h2>
+        <p class="auth-subtitle" id="auth-subtitle">Accès strictement réservé à votre espace.</p>
+
+        <div id="register-fields" style="display: none;">
+            <div class="form-input-container">
+                <label>Nom complet / Agence</label>
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="auth-name" placeholder="Ex: Patrick Kabongo">
+            </div>
+            <div class="form-input-container">
+                <label>Téléphone WhatsApp</label>
+                <i class="fa-brands fa-whatsapp"></i>
+                <input type="tel" id="auth-phone" placeholder="Ex: +243810000000">
+            </div>
+        </div>
+
+        <div class="form-input-container">
+            <label>Adresse Email</label>
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="auth-email" placeholder="exemple@email.com">
+        </div>
+
+        <div class="form-input-container">
+            <label>Mot de passe</label>
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="auth-password" placeholder="Minimum 6 caractères">
+        </div>
+
+        <button id="btn-auth-submit" class="btn-submit-form owner-theme">Continuer</button>
+        <p id="auth-toggle-link" class="auth-toggle-link">Pas encore de compte ? S'inscrire</p>
     </section>
 
-    <!-- ÉCRAN 3 : ESPACE LOCATAIRE -->
-    <section id="scr-tenant" class="screen-view">
-        <header class="app-header">
-            <div class="header-brand">
-                <i class="fa-solid fa-house-chimney"></i>
-                <span>Kaza</span>
+    <!-- ÉCRAN 3 : TABLEAU DE BORD LOCATAIRE -->
+    <section id="scr-tenant-dashboard" class="screen-view tenant-theme">
+        <div class="dashboard-ui-header">
+            <div class="profile-greetings">
+                <h2 id="tenant-greeting">Bonjour</h2>
+                <p>Trouvez votre prochain logement à Kinshasa</p>
             </div>
-            <div class="header-tools">
-                <button class="icon-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
-                <button class="icon-btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+            <div class="header-utility-actions">
+                <button class="circle-action-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
+                <button class="circle-action-btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
-        </header>
-
-        <div class="tabs-bar">
-            <button class="tab-item active" data-tab="catalog">Catalogue</button>
-            <button class="tab-item" data-tab="my-rental">Mon Logement</button>
-            <button class="tab-item" data-tab="tenant-chats">Messages</button>
         </div>
 
-        <!-- BARRE DE RECHERCHE ET FILTRES ÉPURÉS -->
-        <div class="filter-bar" id="tenant-search-panel">
-            <div class="search-box">
+        <div class="search-filter-box" id="tenant-search-box">
+            <div class="form-input-container tight no-label">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="filter-search" placeholder="Avenue, commune ou référence (ex: Socimat)...">
+                <input type="text" id="filter-search" placeholder="Avenue, quartier ou référence (ex: Socimat)...">
             </div>
-            <div class="filter-row">
-                <select id="filter-commune">
-                    <option value="">Commune (Toutes)</option>
-                    <option value="Gombe">Gombe</option>
-                    <option value="Ngaliema">Ngaliema</option>
-                    <option value="Limete">Limete</option>
-                    <option value="Lingwala">Lingwala</option>
-                    <option value="Kintambo">Kintambo</option>
-                    <option value="Bandalungwa">Bandalungwa</option>
-                    <option value="Kasa-Vubu">Kasa-Vubu</option>
-                    <option value="Lemba">Lemba</option>
-                    <option value="Matete">Matete</option>
-                    <option value="Masina">Masina</option>
-                    <option value="Ndjili">Ndjili</option>
-                    <option value="Mont-Ngafula">Mont-Ngafula</option>
-                </select>
-                <select id="filter-type">
-                    <option value="">Type (Tous)</option>
-                    <option value="Appartement">Appartement</option>
-                    <option value="Maison">Maison</option>
-                    <option value="Studio">Studio</option>
-                </select>
+
+            <div class="filter-grid-2">
+                <div class="form-input-container tight no-icon">
+                    <select id="filter-commune">
+                        <option value="">Toutes communes</option>
+                        <option value="Gombe">Gombe</option>
+                        <option value="Ngaliema">Ngaliema</option>
+                        <option value="Limete">Limete</option>
+                        <option value="Lingwala">Lingwala</option>
+                        <option value="Kintambo">Kintambo</option>
+                        <option value="Bandalungwa">Bandalungwa</option>
+                        <option value="Kasa-Vubu">Kasa-Vubu</option>
+                        <option value="Lemba">Lemba</option>
+                        <option value="Matete">Matete</option>
+                        <option value="Masina">Masina</option>
+                        <option value="Ndjili">Ndjili</option>
+                        <option value="Mont-Ngafula">Mont-Ngafula</option>
+                    </select>
+                </div>
+                <div class="form-input-container tight no-icon">
+                    <input type="number" id="filter-max-price" placeholder="Budget Max ($)">
+                </div>
+                <div class="form-input-container tight no-icon">
+                    <select id="filter-snel">
+                        <option value="">SNEL (Tout)</option>
+                        <option value="Cash Power">Cash Power</option>
+                        <option value="Forfait">Forfait SNEL</option>
+                        <option value="Groupe/Solaire">Groupe / Solaire</option>
+                    </select>
+                </div>
+                <div class="form-input-container tight no-icon">
+                    <select id="filter-water">
+                        <option value="">Eau (Tout)</option>
+                        <option value="Regideso">Regideso</option>
+                        <option value="Forage/Citerne">Forage / Citerne</option>
+                    </select>
+                </div>
             </div>
-            <div class="filter-row" style="margin-top: 8px;">
-                <input type="number" id="filter-max-price" placeholder="Prix Max ($)">
-                <select id="filter-snel">
-                    <option value="">Électricité (Toutes)</option>
-                    <option value="Cash Power">Cash Power</option>
-                    <option value="Forfait">Forfait SNEL</option>
-                    <option value="Groupe/Solaire">Groupe / Solaire</option>
-                </select>
-                <select id="filter-water">
-                    <option value="">Eau (Toutes)</option>
-                    <option value="Regideso">Regideso</option>
-                    <option value="Forage/Citerne">Forage / Citerne</option>
-                </select>
+
+            <div class="filter-tags-scroll">
+                <span class="filter-tag active" data-type="">Tous</span>
+                <span class="filter-tag" data-type="Appartement">Appartements</span>
+                <span class="filter-tag" data-type="Maison">Maisons</span>
+                <span class="filter-tag" data-type="Studio">Studios</span>
             </div>
         </div>
 
-        <main id="tenant-content" class="container"></main>
+        <div id="tenant-dynamic-area"></div>
+
+        <nav class="bottom-navigation-bar">
+            <div class="tab-navigation-item active" data-tab="catalog">
+                <i class="fa-solid fa-compass"></i>
+                <span>Explorer</span>
+            </div>
+            <div class="tab-navigation-item" data-tab="my-rental">
+                <i class="fa-solid fa-house-user"></i>
+                <span>Mon Logement</span>
+            </div>
+            <div class="tab-navigation-item" data-tab="tenant-chats">
+                <i class="fa-solid fa-comment-dots"></i>
+                <span>Messages</span>
+            </div>
+        </nav>
     </section>
 
-    <!-- ÉCRAN 4 : ESPACE BAILLEUR -->
-    <section id="scr-owner" class="screen-view">
-        <header class="app-header">
-            <div class="header-brand">
-                <i class="fa-solid fa-key"></i>
-                <span>Kaza Bailleur</span>
+    <!-- ÉCRAN 4 : TABLEAU DE BORD BAILLEUR -->
+    <section id="scr-owner-dashboard" class="screen-view">
+        <div class="dashboard-ui-header">
+            <div class="profile-greetings">
+                <h2 id="owner-greeting">Espace Bailleur</h2>
+                <p>Gérez vos biens et vos revenus</p>
             </div>
-            <div class="header-tools">
-                <button class="icon-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
-                <button class="icon-btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+            <div class="header-utility-actions">
+                <button class="circle-action-btn theme-toggle"><i class="fa-solid fa-moon"></i></button>
+                <button class="circle-action-btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
-        </header>
-
-        <div class="tabs-bar">
-            <button class="tab-item active" data-tab="owner-apparts">Mes Biens</button>
-            <button class="tab-item" data-tab="owner-add">+ Publier</button>
-            <button class="tab-item" data-tab="owner-broadcast">Diffusion</button>
-            <button class="tab-item" data-tab="owner-chats">Messages</button>
         </div>
 
-        <main id="owner-content" class="container"></main>
+        <div id="owner-dynamic-area"></div>
+
+        <nav class="bottom-navigation-bar">
+            <div class="tab-navigation-item active" data-tab="owner-apparts">
+                <i class="fa-solid fa-building"></i>
+                <span>Mes Biens</span>
+            </div>
+            <div class="tab-navigation-item" data-tab="owner-broadcast">
+                <i class="fa-solid fa-bullhorn"></i>
+                <span>Diffusion</span>
+            </div>
+            <div class="tab-navigation-item" data-tab="owner-chats">
+                <i class="fa-solid fa-comment-dots"></i>
+                <span>Messages</span>
+            </div>
+        </nav>
     </section>
 
-    <!-- ÉCRAN 5 : MESSAGERIE PRIVÉE -->
+    <!-- ÉCRAN 5 : SALON DE CHAT -->
     <section id="scr-chat-room" class="screen-view">
-        <header class="app-header">
-            <button class="icon-btn" id="btn-close-chat"><i class="fa-solid fa-arrow-left"></i></button>
-            <div class="chat-header-info">
-                <h3 id="chat-room-title">Discussion</h3>
-                <span id="chat-room-subtitle"></span>
+        <div class="chat-header-bar">
+            <button class="circle-action-btn" id="btn-close-chat"><i class="fa-solid fa-arrow-left"></i></button>
+            <div>
+                <div class="chat-room-title" id="chat-room-title">Discussion</div>
+                <div class="chat-room-subtitle" id="chat-room-subtitle"></div>
             </div>
-            <div style="width: 36px;"></div>
-        </header>
+        </div>
 
-        <div id="chat-messages-container" class="chat-messages"></div>
+        <div id="chat-messages-container" class="chat-messages-scrollarea"></div>
 
-        <div class="chat-footer">
-            <input type="text" id="chat-input-field" placeholder="Votre message...">
-            <button id="btn-send-msg" class="btn-send"><i class="fa-solid fa-paper-plane"></i></button>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input-field" placeholder="Écrire un message...">
+            <button id="btn-send-message" class="btn-send-message"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </section>
 
-    <!-- MODALE QUITTANCE DE LOYER -->
-    <div id="receipt-modal" class="modal-backdrop" style="display:none;">
-        <div class="card modal-box" id="receipt-printable">
-            <div class="receipt-top">
-                <h3>Quittance de Loyer</h3>
-                <span class="tag-success">Payé & Validé</span>
+    <!-- MODALE PUBLICATION BIEN (4 PHOTOS MAX) -->
+    <div id="add-appart-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <h3>Publier un nouveau bien</h3>
+            
+            <div class="form-input-container no-icon">
+                <label>Titre de l'annonce</label>
+                <input type="text" id="new-title" placeholder="Ex: Appartement 2 chambres moderne">
             </div>
-            <div id="receipt-body" class="receipt-content"></div>
-            <div class="btn-group-row">
-                <button onclick="window.print()" class="btn-main">Imprimer / PDF</button>
-                <button id="btn-close-receipt" class="btn-outline">Fermer</button>
+
+            <div class="filter-grid-2">
+                <div class="form-input-container no-icon">
+                    <label>Type de bien</label>
+                    <select id="new-type">
+                        <option value="Appartement">Appartement</option>
+                        <option value="Maison">Maison</option>
+                        <option value="Studio">Studio</option>
+                    </select>
+                </div>
+                <div class="form-input-container no-icon">
+                    <label>Commune</label>
+                    <select id="new-commune">
+                        <option value="Gombe">Gombe</option><option value="Ngaliema">Ngaliema</option>
+                        <option value="Limete">Limete</option><option value="Lingwala">Lingwala</option>
+                        <option value="Kintambo">Kintambo</option><option value="Bandalungwa">Bandalungwa</option>
+                        <option value="Kasa-Vubu">Kasa-Vubu</option><option value="Lemba">Lemba</option>
+                        <option value="Matete">Matete</option><option value="Masina">Masina</option>
+                        <option value="Ndjili">Ndjili</option><option value="Mont-Ngafula">Mont-Ngafula</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-input-container no-icon">
+                <label>Avenue et Point de référence précis</label>
+                <input type="text" id="new-ref" placeholder="Ex: Av. Kasavubu, Réf: Arrêt Socimat">
+            </div>
+
+            <div class="filter-grid-2">
+                <div class="form-input-container no-icon">
+                    <label>Loyer Mensuel ($)</label>
+                    <input type="number" id="new-price" placeholder="350">
+                </div>
+                <div class="form-input-container no-icon">
+                    <label>Garantie locative</label>
+                    <input type="text" id="new-garantie" placeholder="Ex: 3 mois + 1">
+                </div>
+            </div>
+
+            <div class="filter-grid-2">
+                <div class="form-input-container no-icon">
+                    <label>Électricité (SNEL)</label>
+                    <select id="new-snel">
+                        <option value="Cash Power">Cash Power</option>
+                        <option value="Forfait">Forfait SNEL</option>
+                        <option value="Groupe/Solaire">Groupe / Solaire</option>
+                    </select>
+                </div>
+                <div class="form-input-container no-icon">
+                    <label>Accès Eau</label>
+                    <select id="new-water">
+                        <option value="Regideso">Regideso</option>
+                        <option value="Forage/Citerne">Forage / Citerne</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-input-container no-icon">
+                <label>Lien Google Maps (Optionnel)</label>
+                <input type="url" id="new-maps" placeholder="https://maps.google.com/...">
+            </div>
+
+            <div class="form-input-container no-icon">
+                <label>Photos du logement (<span id="photo-counter">0</span>/4 max • 5 Mo/photo)</label>
+                <div class="photo-upload-zone" id="photo-drop-zone">
+                    <i class="fa-solid fa-camera-retro"></i>
+                    <span>Ajouter jusqu'à 4 photos</span>
+                    <small>JPG, PNG ou WEBP</small>
+                    <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+                </div>
+                <div id="photo-preview-container" class="photo-preview-grid"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn-cancel-add" class="btn-submit-form" style="background:var(--text-muted);">Annuler</button>
+                <button id="btn-save-appart" class="btn-submit-form owner-theme">Publier</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE QUITTANCE -->
+    <div id="receipt-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box" id="receipt-printable">
+            <h3><i class="fa-solid fa-file-invoice-dollar" style="color:var(--secondary);"></i> Quittance de Loyer</h3>
+            <div id="receipt-body" style="font-size:13px; line-height:1.8;"></div>
+            <div class="modal-actions">
+                <button id="btn-close-receipt" class="btn-submit-form" style="background:var(--text-muted);">Fermer</button>
+                <button onclick="window.print()" class="btn-submit-form tenant-theme">Imprimer / PDF</button>
             </div>
         </div>
     </div>
