@@ -1,16 +1,54 @@
-{
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  },
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. PROFILS UTILISATEURS
+    match /users/{userId} {
+      // Chacun ne lit que ses propres infos
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Création autorisée uniquement avec un rôle valide ('owner' ou 'tenant')
+      allow create: if request.auth != null 
+                    && request.auth.uid == userId
+                    && request.resource.data.role in ['owner', 'tenant'];
+      // Modification interdite sur le rôle pour éviter toute usurpation
+      allow update: if request.auth != null 
+                    && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role;
+    }
+
+    // 2. BIENS IMMOBILIERS
+    match /apartments/{aptId} {
+      // Lecture autorisée à tout membre connecté
+      allow read: if request.auth != null;
+
+      // Création réservée strictement aux Bailleurs authentifiés
+      allow create: if request.auth != null
+                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner'
+                    && request.resource.data.ownerUid == request.auth.uid;
+
+      // Mise à jour ciblée :
+      // - Le bailleur propriétaire peut tout mettre à jour sur son bien
+      // - Un locataire peut réserver un bien Disponible OU gérer le bien qu'il occupe déjà
+      allow update: if request.auth != null && (
+        resource.data.ownerUid == request.auth.uid ||
+        (resource.data.status == 'Disponible' && request.resource.data.tenantUid == request.auth.uid) ||
+        resource.data.tenantUid == request.auth.uid
+      );
+
+      // Suppression réservée uniquement au bailleur propriétaire
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // 3. MESSAGERIE PRIVÉE (Strictement limitée aux deux participants)
+    match /chats/{chatId} {
+      allow read, update: if request.auth != null && (
+        resource.data.ownerEmail == request.auth.token.email ||
+        resource.data.tenantEmail == request.auth.token.email
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.ownerEmail == request.auth.token.email ||
+        request.resource.data.tenantEmail == request.auth.token.email
+      );
+    }
   }
 }
