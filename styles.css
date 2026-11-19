@@ -1,555 +1,691 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
 
-:root {
-  --background: #f4f2f8;
-  --surface: #ffffff;
-  --surface-glass: rgba(255, 255, 255, 0.9);
-  --text-main: #1e1b2e;
-  --text-muted: #6b6682;
-  --border: #e5e0f0;
-  --input-bg: #f8fafc;
-  --primary: #6d28d9;
-  --primary-gradient: linear-gradient(135deg, #6d28d9 0%, #10b981 100%);
-  --secondary: #10b981;
-  --secondary-gradient: linear-gradient(135deg, #10b981, #059669);
-  --shadow-sm: 0 4px 20px rgba(109, 40, 217, 0.06);
-  --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.1);
-  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+const firebaseConfig = {
+  apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
+  authDomain: "kaza-bf0dc.firebaseapp.com",
+  projectId: "kaza-bf0dc",
+  storageBucket: "kaza-bf0dc.firebasestorage.app",
+  messagingSenderId: "785266371417",
+  appId: "1:785266371417:web:9dc8df1cfef4e12ec63a48",
+  measurementId: "G-MTDDTVT839"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Persistance locale stricte : l'utilisateur reste connecté sans repasser par le formulaire
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error("Erreur persistance session :", error);
+});
+
+let state = {
+    selectedRole: null,
+    authMode: 'login',
+    user: null,
+    apartments: [],
+    chats: [],
+    activeChatId: null,
+    selectedTypeTag: '',
+    selectedFiles: []
+};
+
+function showScreen(id) {
+    document.querySelectorAll('.screen-view').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
 }
 
-.dark-mode {
-  --background: #0f0c1d;
-  --surface: #1a152e;
-  --surface-glass: rgba(26, 21, 46, 0.9);
-  --text-main: #f5f3ff;
-  --text-muted: #a59ec2;
-  --border: #2d264a;
-  --input-bg: #110f22;
-  --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.6);
+// SÉLECTION DE RÔLE
+document.querySelectorAll('.role-interactive-card').forEach(card => {
+    card.addEventListener('click', () => {
+        state.selectedRole = card.dataset.role;
+        localStorage.setItem('kaza_intended_role', state.selectedRole);
+        const isOwner = state.selectedRole === 'owner';
+        document.getElementById('auth-title').innerText = `Connexion ${isOwner ? 'Bailleur' : 'Locataire'}`;
+        document.getElementById('auth-subtitle').innerText = `Accès sécurisé et persistant (${isOwner ? 'Bailleur' : 'Locataire'}).`;
+        const submitBtn = document.getElementById('btn-auth-submit');
+        submitBtn.className = `btn-submit-form ${isOwner ? 'owner-theme' : 'tenant-theme'}`;
+        showScreen('scr-auth');
+    });
+});
+
+document.getElementById('btn-back-role').addEventListener('click', () => showScreen('scr-role-select'));
+
+document.getElementById('auth-toggle-link').addEventListener('click', () => {
+    state.authMode = state.authMode === 'login' ? 'register' : 'login';
+    const isOwner = state.selectedRole === 'owner';
+    document.getElementById('register-fields').style.display = state.authMode === 'register' ? 'block' : 'none';
+    document.getElementById('auth-title').innerText = `${state.authMode === 'login' ? 'Connexion' : 'Inscription'} ${isOwner ? 'Bailleur' : 'Locataire'}`;
+    document.getElementById('btn-auth-submit').innerText = state.authMode === 'login' ? 'Continuer' : 'Créer mon compte';
+    document.getElementById('auth-toggle-link').innerText = state.authMode === 'login' ? "Pas encore de compte ? S'inscrire" : "Déjà inscrit ? Se connecter";
+});
+
+// AUTHENTIFICATION
+document.getElementById('btn-auth-submit').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim().toLowerCase();
+    const pass = document.getElementById('auth-password').value;
+    const intendedRole = state.selectedRole || localStorage.getItem('kaza_intended_role') || 'tenant';
+
+    if (!email || !pass) return alert("Veuillez remplir l'email et le mot de passe.");
+
+    const btn = document.getElementById('btn-auth-submit');
+    btn.disabled = true;
+    btn.innerText = "Vérification...";
+
+    try {
+        if (state.authMode === 'register') {
+            const name = document.getElementById('auth-name').value.trim();
+            const phone = document.getElementById('auth-phone').value.trim();
+            if (!name || !phone) {
+                btn.disabled = false;
+                btn.innerText = "Créer mon compte";
+                return alert("Nom complet et numéro WhatsApp obligatoires.");
+            }
+            const cred = await createUserWithEmailAndPassword(auth, email, pass);
+            await setDoc(doc(db, "users", cred.user.uid), {
+                uid: cred.user.uid, email, name, phone, role: intendedRole, createdAt: new Date().toISOString()
+            });
+        } else {
+            await signInWithEmailAndPassword(auth, email, pass);
+        }
+    } catch (e) {
+        alert("Erreur : " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = state.authMode === 'login' ? 'Continuer' : 'Créer mon compte';
+    }
+});
+
+document.querySelectorAll('.btn-logout').forEach(b => b.addEventListener('click', async () => {
+    localStorage.removeItem('kaza_intended_role');
+    await signOut(auth);
+}));
+
+document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', () => document.body.classList.toggle('dark-mode')));
+
+// BOUCLIER DE RÔLE & TEMPS RÉEL
+onAuthStateChanged(auth, async (firebaseUser) => {
+    if (!firebaseUser) {
+        state.user = null;
+        return showScreen('scr-role-select');
+    }
+
+    const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
+    if (!userSnap.exists()) {
+        await signOut(auth);
+        return alert("Profil introuvable.");
+    }
+
+    const userData = userSnap.data();
+    const intendedRole = state.selectedRole || localStorage.getItem('kaza_intended_role');
+
+    if (intendedRole && userData.role !== intendedRole) {
+        const vraiRole = userData.role === 'owner' ? 'Bailleur' : 'Locataire';
+        await signOut(auth);
+        alert(`Accès refusé : ce compte est enregistré comme ${vraiRole}. Utilisez l'espace correspondant.`);
+        return showScreen('scr-role-select');
+    }
+
+    state.user = userData;
+
+    onSnapshot(collection(db, "apartments"), (snap) => {
+        state.apartments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (state.user.role === 'tenant') {
+            const activeTab = document.querySelector('#scr-tenant-dashboard .tab-navigation-item.active')?.dataset.tab;
+            if (activeTab === 'my-rental') renderMyRental();
+            else if (activeTab !== 'tenant-chats') renderCatalog();
+        } else {
+            const activeTab = document.querySelector('#scr-owner-dashboard .tab-navigation-item.active')?.dataset.tab;
+            if (activeTab === 'owner-apparts') renderOwnerDashboard();
+        }
+    });
+
+    onSnapshot(collection(db, "chats"), (snap) => {
+        state.chats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (state.activeChatId) renderChatMessages();
+    });
+
+    if (state.user.role === 'owner') {
+        document.getElementById('owner-greeting').innerText = `Bonjour, ${state.user.name}`;
+        showScreen('scr-owner-dashboard');
+        renderOwnerDashboard();
+    } else {
+        document.getElementById('tenant-greeting').innerText = `Bonjour, ${state.user.name}`;
+        showScreen('scr-tenant-dashboard');
+        renderCatalog();
+    }
+});
+
+// GESTION UPLOAD 4 PHOTOS
+const dropZone = document.getElementById('photo-drop-zone');
+const fileInput = document.getElementById('new-photo');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    for (const file of files) {
+        if (state.selectedFiles.length >= 4) {
+            alert("Limite atteinte : 4 photos maximum par logement.");
+            break;
+        }
+        if (!file.type.startsWith('image/')) {
+            alert(`Le fichier "${file.name}" n'est pas une image valide.`);
+            continue;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert(`L'image "${file.name}" dépasse 5 Mo.`);
+            continue;
+        }
+        state.selectedFiles.push(file);
+    }
+    fileInput.value = "";
+    renderPhotoPreviews();
+});
+
+function renderPhotoPreviews() {
+    document.getElementById('photo-counter').innerText = state.selectedFiles.length;
+    const container = document.getElementById('photo-preview-container');
+    container.innerHTML = state.selectedFiles.map((file, idx) => {
+        const url = URL.createObjectURL(file);
+        return `
+        <div class="preview-item">
+            <img src="${url}">
+            <button type="button" class="btn-remove-photo" onclick="window.removeSelectedPhoto(${idx})">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>`;
+    }).join('');
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  -webkit-tap-highlight-color: transparent;
+window.removeSelectedPhoto = (idx) => {
+    state.selectedFiles.splice(idx, 1);
+    renderPhotoPreviews();
+};
+
+// ESPACE BAILLEUR
+document.querySelectorAll('#scr-owner-dashboard .tab-navigation-item').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('#scr-owner-dashboard .tab-navigation-item').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        if (tab.dataset.tab === 'owner-apparts') renderOwnerDashboard();
+        if (tab.dataset.tab === 'owner-broadcast') renderBroadcastView();
+        if (tab.dataset.tab === 'owner-chats') renderChatList('owner-dynamic-area');
+    });
+});
+
+function renderOwnerDashboard() {
+    const myApparts = state.apartments.filter(a => a.ownerEmail === state.user.email);
+    const totalCount = myApparts.length;
+    const rentedApparts = myApparts.filter(a => a.status === 'Loué');
+    const monthlyRevenue = rentedApparts.reduce((sum, a) => sum + Number(a.rates?.month || a.price || 0), 0);
+
+    const area = document.getElementById('owner-dynamic-area');
+    area.innerHTML = `
+        <div class="stats-grid-row">
+            <div class="stats-kpi-card blue-indicator">
+                <div class="stats-kpi-header"><i class="fa-solid fa-building"></i> Total Biens</div>
+                <div class="stats-kpi-number">${totalCount}</div>
+            </div>
+            <div class="stats-kpi-card green-indicator">
+                <div class="stats-kpi-header"><i class="fa-solid fa-user-check"></i> Occupés</div>
+                <div class="stats-kpi-number">${rentedApparts.length}</div>
+            </div>
+        </div>
+
+        <div class="revenue-box">
+            <div>
+                <h4>Revenus Estimés</h4>
+                <p>Basé sur vos biens loués</p>
+            </div>
+            <strong>${monthlyRevenue} $</strong>
+        </div>
+
+        <div class="action-context-bar">
+            <span class="context-title">Mes propriétés</span>
+            <button class="btn-action-trigger" id="btn-open-add-modal"><i class="fa-solid fa-plus"></i> Ajouter</button>
+        </div>
+
+        <div id="owner-listings-container"></div>
+    `;
+
+    document.getElementById('btn-open-add-modal').addEventListener('click', () => {
+        document.getElementById('add-appart-modal').style.display = 'flex';
+    });
+
+    const listEl = document.getElementById('owner-listings-container');
+    if (myApparts.length === 0) {
+        listEl.innerHTML = `<div class="blank-slate"><i class="fa-solid fa-house-circle-plus"></i><p>Cliquez sur "+ Ajouter" pour publier votre premier logement.</p></div>`;
+        return;
+    }
+
+    listEl.innerHTML = myApparts.map(a => {
+        const rates = a.rates || { month: a.price || 0 };
+        const ratesStr = Object.entries(rates)
+            .filter(([k, v]) => v > 0)
+            .map(([k, v]) => `${v}$ / ${k === 'hour' ? 'heure' : k === 'day' ? 'jour' : k === 'week' ? 'semaine' : 'mois'}`)
+            .join(' • ');
+
+        return `
+        <div class="apartment-card-ui">
+            <div class="apartment-card-image-placeholder">
+                <img src="${a.photoUrl}" alt="${a.title}">
+                <span class="apartment-card-badge ${a.status === 'Disponible' ? 'badge-dispo' : 'badge-loue'}">${a.status}</span>
+            </div>
+            <div class="apartment-card-details">
+                <div class="apartment-card-location">${a.commune} • ${a.type || 'Logement'}</div>
+                <div class="apartment-card-title">${a.title}</div>
+                <div class="apartment-card-address-detail">${a.reference}</div>
+
+                <div class="kin-specs-tags">
+                    <span class="kin-spec-tag"><i class="fa-solid fa-bolt"></i> ${a.snel}</span>
+                    <span class="kin-spec-tag"><i class="fa-solid fa-droplet"></i> ${a.water}</span>
+                    <span class="kin-spec-tag">Garantie : ${a.garantie}</span>
+                </div>
+
+                <div class="apartment-card-pricing-row">
+                    <div class="apartment-card-price" style="font-size:15px;">${ratesStr}</div>
+                    ${!a.tenantName ? `<button class="btn-action-trigger danger-btn small-btn" onclick="window.deleteAppart('${a.id}')"><i class="fa-solid fa-trash"></i> Supprimer</button>` : ''}
+                </div>
+
+                ${a.tenantName ? `
+                    <div class="pending-payment-box">
+                        <span>Locataire : <strong>${a.tenantName}</strong><br>Statut : ${a.paymentStatus || 'En attente'}</span>
+                        ${a.paymentStatus === 'Payé' ? `<button class="btn-action-trigger tenant-btn small-btn" onclick="window.confirmPayment('${a.id}')">Valider</button>` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    }).join('');
 }
 
-body {
-  background: var(--background);
-  color: var(--text-main);
-  transition: background 0.35s var(--ease-spring), color 0.35s var(--ease-spring);
-  padding-bottom: 100px;
-  min-height: 100vh;
-  overflow-x: hidden;
+document.getElementById('btn-cancel-add').addEventListener('click', () => {
+    document.getElementById('add-appart-modal').style.display = 'none';
+});
+
+document.getElementById('btn-save-appart').addEventListener('click', async () => {
+    const title = document.getElementById('new-title').value.trim();
+    const refPoint = document.getElementById('new-ref').value.trim();
+    
+    const pHour = Number(document.getElementById('price-hour').value) || 0;
+    const pDay = Number(document.getElementById('price-day').value) || 0;
+    const pWeek = Number(document.getElementById('price-week').value) || 0;
+    const pMonth = Number(document.getElementById('price-month').value) || 0;
+
+    if (!title || !refPoint) return alert("Remplissez le titre et la référence du bien.");
+    if (pHour === 0 && pDay === 0 && pWeek === 0 && pMonth === 0) {
+        return alert("Veuillez renseigner au moins un tarif (Heure, Jour, Semaine ou Mois).");
+    }
+
+    const btn = document.getElementById('btn-save-appart');
+    btn.innerText = "Publication...";
+    btn.disabled = true;
+
+    try {
+        let photos = [];
+        if (state.selectedFiles.length > 0) {
+            for (let i = 0; i < state.selectedFiles.length; i++) {
+                const file = state.selectedFiles[i];
+                const storageRef = ref(storage, `apartments/${state.user.uid}/${Date.now()}_${i}_${file.name}`);
+                await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(storageRef);
+                photos.push(url);
+            }
+        } else {
+            photos.push("https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800");
+        }
+
+        const id = "apt_" + Date.now();
+        await setDoc(doc(db, "apartments", id), {
+            id, title,
+            type: document.getElementById('new-type').value,
+            commune: document.getElementById('new-commune').value,
+            rates: { hour: pHour, day: pDay, week: pWeek, month: pMonth },
+            price: pMonth || pDay || pHour || 0, // pour compatibilité rétroactive
+            reference: refPoint,
+            garantie: document.getElementById('new-garantie').value.trim() || "À discuter",
+            snel: document.getElementById('new-snel').value,
+            water: document.getElementById('new-water').value,
+            mapsUrl: document.getElementById('new-maps').value.trim(),
+            photos,
+            photoUrl: photos[0],
+            status: "Disponible",
+            ownerUid: state.user.uid,
+            ownerEmail: state.user.email,
+            ownerName: state.user.name,
+            ownerPhone: state.user.phone || "",
+            tenantUid: null, tenantEmail: null, tenantName: null,
+            paymentStatus: null, receiptDate: null
+        });
+
+        document.getElementById('add-appart-modal').style.display = 'none';
+        document.getElementById('new-title').value = "";
+        document.getElementById('new-ref').value = "";
+        ['price-hour', 'price-day', 'price-week', 'price-month'].forEach(id => document.getElementById(id).value = "");
+        state.selectedFiles = [];
+        renderPhotoPreviews();
+        alert("Logement publié avec succès !");
+    } catch (err) {
+        alert("Erreur : " + err.message);
+    } finally {
+        btn.innerText = "Publier";
+        btn.disabled = false;
+    }
+});
+
+window.confirmPayment = async (id) => {
+    const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    await updateDoc(doc(db, "apartments", id), { paymentStatus: "Confirmé", receiptDate: dateStr });
+    alert("Paiement validé !");
+};
+
+window.deleteAppart = async (id) => {
+    if (!confirm("Supprimer ce bien ?")) return;
+    await deleteDoc(doc(db, "apartments", id));
+};
+
+function renderBroadcastView() {
+    const myTenants = state.apartments.filter(a => a.ownerEmail === state.user.email && a.tenantEmail);
+    document.getElementById('owner-dynamic-area').innerHTML = `
+        <div class="surface-box">
+            <h4><i class="fa-solid fa-bullhorn" style="color:var(--primary);"></i> Diffusion aux Locataires</h4>
+            <p class="muted-text">Envoyez une annonce groupée à vos <strong>${myTenants.length}</strong> locataire(s) actif(s).</p>
+            <div class="form-input-container no-icon">
+                <textarea id="broadcast-msg" rows="4" placeholder="Ex: Rappel de paiement..."></textarea>
+            </div>
+            <button id="btn-send-broadcast" class="btn-submit-form owner-theme">Diffuser le message</button>
+        </div>
+    `;
+
+    document.getElementById('btn-send-broadcast').addEventListener('click', async () => {
+        const txt = document.getElementById('broadcast-msg').value.trim();
+        if (!txt || myTenants.length === 0) return alert("Message vide ou aucun locataire actif.");
+        for (const apt of myTenants) {
+            const chatId = `${apt.tenantEmail}_${state.user.email}`.replace(/[.@]/g, '_');
+            const chatRef = doc(db, "chats", chatId);
+            const snap = await getDoc(chatRef);
+            const msgObj = { sender: state.user.email, text: `📢 [Communiqué] ${txt}`, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+            if (snap.exists()) await updateDoc(chatRef, { messages: arrayUnion(msgObj) });
+            else await setDoc(chatRef, { id: chatId, tenantEmail: apt.tenantEmail, tenantName: apt.tenantName, ownerEmail: state.user.email, ownerName: state.user.name, context: apt.title, messages: [msgObj] });
+        }
+        alert("Message diffusé !");
+        document.getElementById('broadcast-msg').value = "";
+    });
 }
 
-/* RESPONSIVE & ESPACE RESPIRANT POUR TOUS LES ÉCRANS */
-.screen-view {
-  display: none;
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 24px;
-  animation: screenSlideIn 0.4s var(--ease-spring) forwards;
+// ESPACE LOCATAIRE
+['filter-search', 'filter-commune', 'filter-max-price', 'filter-rate-type', 'filter-snel', 'filter-water'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderCatalog);
+});
+
+document.querySelectorAll('.filter-tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+        tag.classList.add('active');
+        state.selectedTypeTag = tag.dataset.type;
+        renderCatalog();
+    });
+});
+
+document.querySelectorAll('#scr-tenant-dashboard .tab-navigation-item').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('#scr-tenant-dashboard .tab-navigation-item').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tenant-search-box').style.display = tab.dataset.tab === 'catalog' ? 'block' : 'none';
+        if (tab.dataset.tab === 'catalog') renderCatalog();
+        if (tab.dataset.tab === 'my-rental') renderMyRental();
+        if (tab.dataset.tab === 'tenant-chats') renderChatList('tenant-dynamic-area');
+    });
+});
+
+function renderCatalog() {
+    const q = document.getElementById('filter-search').value.toLowerCase();
+    const comm = document.getElementById('filter-commune').value;
+    const maxP = Number(document.getElementById('filter-max-price').value);
+    const rateType = document.getElementById('filter-rate-type').value;
+    const snel = document.getElementById('filter-snel').value;
+    const water = document.getElementById('filter-water').value;
+
+    const filtered = state.apartments.filter(a => {
+        if (a.status !== 'Disponible') return false;
+        if (comm && a.commune !== comm) return false;
+        if (state.selectedTypeTag && a.type !== state.selectedTypeTag) return false;
+        if (snel && a.snel !== snel) return false;
+        if (water && a.water !== water) return false;
+        if (q && !(`${a.title} ${a.commune} ${a.reference}`.toLowerCase().includes(q))) return false;
+
+        const rates = a.rates || { month: a.price || 0 };
+        if (rateType) {
+            if (!rates[rateType] || rates[rateType] <= 0) return false;
+            if (maxP && rates[rateType] > maxP) return false;
+        } else if (maxP) {
+            const minAvailable = Math.min(...Object.values(rates).filter(v => v > 0));
+            if (minAvailable > maxP) return false;
+        }
+        return true;
+    });
+
+    const area = document.getElementById('tenant-dynamic-area');
+    if (filtered.length === 0) {
+        area.innerHTML = `<div class="blank-slate"><i class="fa-solid fa-magnifying-glass-location"></i><p>Aucun logement disponible pour ces critères.</p></div>`;
+        return;
+    }
+
+    area.innerHTML = filtered.map(a => {
+        const cleanPhone = (a.ownerPhone || "").replace(/[^0-9]/g, '');
+        const rates = a.rates || { month: a.price || 0 };
+        const ratesStr = Object.entries(rates)
+            .filter(([k, v]) => v > 0)
+            .map(([k, v]) => `${v}$ / ${k === 'hour' ? 'heure' : k === 'day' ? 'jour' : k === 'week' ? 'semaine' : 'mois'}`)
+            .join(' • ');
+
+        const waMsg = encodeURIComponent(`Bonjour ${a.ownerName}, je suis intéressé par votre bien "${a.title}" à ${a.commune} (${ratesStr}) sur Kaza.`);
+        const gallery = a.photos || [a.photoUrl];
+
+        return `
+        <div class="apartment-card-ui">
+            <div class="apartment-card-image-placeholder">
+                <img id="main-img-${a.id}" src="${gallery[0]}" alt="${a.title}">
+                <span class="apartment-card-badge badge-dispo">Disponible</span>
+            </div>
+            ${gallery.length > 1 ? `
+            <div class="gallery-miniatures">
+                ${gallery.map((u, i) => `<img src="${u}" class="${i === 0 ? 'active-thumb' : ''}" onclick="window.switchCardPhoto('${a.id}', '${u}', this)">`).join('')}
+            </div>` : ''}
+            <div class="apartment-card-details">
+                <div class="apartment-card-location">${a.commune} • ${a.type || 'Logement'}</div>
+                <div class="apartment-card-title">${a.title}</div>
+                <div class="apartment-card-address-detail">
+                    ${a.reference}
+                    ${a.mapsUrl ? `<br><a href="${a.mapsUrl}" target="_blank" style="color:var(--primary); font-weight:700; text-decoration:none; font-size:12px;"><i class="fa-solid fa-map-pin"></i> Ouvrir dans Google Maps</a>` : ''}
+                </div>
+
+                <div class="kin-specs-tags">
+                    <span class="kin-spec-tag"><i class="fa-solid fa-bolt"></i> ${a.snel}</span>
+                    <span class="kin-spec-tag"><i class="fa-solid fa-droplet"></i> ${a.water}</span>
+                    <span class="kin-spec-tag">Garantie : ${a.garantie}</span>
+                </div>
+
+                ${cleanPhone ? `
+                <div class="tenant-actions-row">
+                    <a href="tel:+${cleanPhone}" class="quick-contact-btn call"><i class="fa-solid fa-phone"></i> Appeler</a>
+                    <a href="https://wa.me/${cleanPhone}?text=${waMsg}" target="_blank" class="quick-contact-btn whatsapp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+                </div>` : ''}
+
+                <div class="apartment-card-pricing-row">
+                    <div class="apartment-card-price" style="font-size:16px;">${ratesStr}</div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-action-trigger outline-btn" onclick="window.openChat('${a.ownerEmail}', '${a.ownerName}', '${a.title}')"><i class="fa-solid fa-comment"></i></button>
+                        <button class="btn-action-trigger tenant-btn" onclick="window.bookAppart('${a.id}')">Réserver</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
-@media (min-width: 768px) {
-  .screen-view {
-    max-width: 760px;
-    padding: 32px 40px;
-  }
+window.switchCardPhoto = (aptId, newUrl, thumbEl) => {
+    const mainImg = document.getElementById(`main-img-${aptId}`);
+    if (mainImg) mainImg.src = newUrl;
+    thumbEl.parentElement.querySelectorAll('img').forEach(img => img.classList.remove('active-thumb'));
+    thumbEl.classList.add('active-thumb');
+};
+
+window.bookAppart = async (id) => {
+    if (!confirm("Confirmer la réservation de ce logement ?")) return;
+    await updateDoc(doc(db, "apartments", id), {
+        status: "Loué", tenantUid: state.user.uid, tenantEmail: state.user.email, tenantName: state.user.name, paymentStatus: "En attente"
+    });
+    alert("Logement réservé avec succès !");
+};
+
+function renderMyRental() {
+    const mine = state.apartments.filter(a => a.tenantEmail === state.user.email);
+    const area = document.getElementById('tenant-dynamic-area');
+    if (mine.length === 0) {
+        area.innerHTML = `<div class="blank-slate"><i class="fa-solid fa-house"></i><p>Vous n'occupez aucun logement actuellement.</p></div>`;
+        return;
+    }
+
+    area.innerHTML = mine.map(a => {
+        const rates = a.rates || { month: a.price || 0 };
+        const ratesStr = Object.entries(rates)
+            .filter(([k, v]) => v > 0)
+            .map(([k, v]) => `${v}$ / ${k}`)
+            .join(' • ');
+
+        return `
+        <div class="surface-box">
+            <div class="apartment-card-location">${a.commune}</div>
+            <h3 style="font-size:18px; margin:4px 0;">${a.title}</h3>
+            <div class="apartment-card-price" style="font-size:16px; margin-bottom:10px;">${ratesStr}</div>
+            <p class="muted-text">Bailleur : <strong>${a.ownerName}</strong> • Statut : <strong>${a.paymentStatus}</strong></p>
+            
+            ${a.paymentStatus !== 'Confirmé' ? `<button class="btn-submit-form tenant-theme" onclick="window.notifyRentPaid('${a.id}')">Signaler le paiement</button>` : ''}
+            ${a.paymentStatus === 'Confirmé' ? `<button class="btn-submit-form owner-theme" onclick="window.viewReceipt('${a.id}')"><i class="fa-solid fa-file-invoice"></i> Voir ma Quittance</button>` : ''}
+            
+            <button class="btn-action-trigger danger-btn" style="width:100%; margin-top:12px; padding:12px;" onclick="window.leaveAppart('${a.id}')">Signaler mon départ</button>
+        </div>
+    `;
+    }).join('');
 }
 
-.screen-view.active {
-  display: block;
+window.notifyRentPaid = async (id) => {
+    await updateDoc(doc(db, "apartments", id), { paymentStatus: "Payé" });
+    alert("Paiement signalé au bailleur.");
+    renderMyRental();
+};
+
+window.leaveAppart = async (id) => {
+    if (!confirm("Voulez-vous libérer ce logement ?")) return;
+    await updateDoc(doc(db, "apartments", id), {
+        status: "Disponible", tenantUid: null, tenantEmail: null, tenantName: null, paymentStatus: null, receiptDate: null
+    });
+    renderMyRental();
+};
+
+window.viewReceipt = (id) => {
+    const a = state.apartments.find(x => x.id === id);
+    if (!a) return;
+    const rates = a.rates || { month: a.price || 0 };
+    const ratesStr = Object.entries(rates).filter(([k,v]) => v > 0).map(([k,v]) => `${v}$/${k}`).join(', ');
+
+    document.getElementById('receipt-body').innerHTML = `
+        <p><strong>Réf. Reçu :</strong> KZ-${a.id.slice(-6)}</p>
+        <p><strong>Date de validation :</strong> ${a.receiptDate || new Date().toLocaleDateString('fr-FR')}</p>
+        <p><strong>Locataire :</strong> ${a.tenantName}</p>
+        <p><strong>Bailleur :</strong> ${a.ownerName}</p>
+        <p><strong>Bien :</strong> ${a.title} (${a.commune})</p>
+        <p style="font-size:16px; color:var(--secondary); margin-top:10px;"><strong>Tarifs appliqués : ${ratesStr}</strong></p>
+    `;
+    document.getElementById('receipt-modal').style.display = 'flex';
+};
+
+document.getElementById('btn-close-receipt').addEventListener('click', () => {
+    document.getElementById('receipt-modal').style.display = 'none';
+});
+
+// MESSAGERIE
+window.openChat = async (ownerEmail, ownerName, title) => {
+    const chatId = `${state.user.email}_${ownerEmail}`.replace(/[.@]/g, '_');
+    const chatRef = doc(db, "chats", chatId);
+    const snap = await getDoc(chatRef);
+    if (!snap.exists()) {
+        await setDoc(chatRef, {
+            id: chatId, tenantEmail: state.user.email, tenantName: state.user.name,
+            ownerEmail, ownerName, context: title,
+            messages: [{ sender: "system", text: `Discussion ouverte pour : ${title}`, time: "" }]
+        });
+    }
+    state.activeChatId = chatId;
+    document.getElementById('chat-room-title').innerText = ownerName;
+    document.getElementById('chat-room-subtitle').innerText = title;
+    const chatScreen = document.getElementById('scr-chat-room');
+    chatScreen.className = `screen-view active ${state.user.role === 'tenant' ? 'tenant-theme' : ''}`;
+    document.querySelectorAll('.screen-view').forEach(s => { if (s.id !== 'scr-chat-room') s.classList.remove('active'); });
+    renderChatMessages();
+};
+
+function renderChatList(areaId) {
+    const myChats = state.chats.filter(c => state.user.role === 'owner' ? c.ownerEmail === state.user.email : c.tenantEmail === state.user.email);
+    const area = document.getElementById(areaId);
+    if (myChats.length === 0) {
+        area.innerHTML = `<div class="blank-slate"><i class="fa-solid fa-comments"></i><p>Aucune conversation pour le moment.</p></div>`;
+        return;
+    }
+    area.innerHTML = myChats.map(c => {
+        const name = state.user.role === 'owner' ? c.tenantName : c.ownerName;
+        const lastMsg = c.messages[c.messages.length - 1]?.text || '';
+        return `
+        <div class="chat-list-item" onclick="window.enterRoom('${c.id}', '${name}', '${c.context}')">
+            <div class="chat-avatar">${name.charAt(0).toUpperCase()}</div>
+            <div class="chat-info">
+                <h4>${name}</h4>
+                <div class="chat-context">${c.context}</div>
+                <p>${lastMsg}</p>
+            </div>
+        </div>`;
+    }).join('');
 }
 
-@keyframes screenSlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+window.enterRoom = (id, name, context) => {
+    state.activeChatId = id;
+    document.getElementById('chat-room-title').innerText = name;
+    document.getElementById('chat-room-subtitle').innerText = context;
+    const chatScreen = document.getElementById('scr-chat-room');
+    chatScreen.className = `screen-view active ${state.user.role === 'tenant' ? 'tenant-theme' : ''}`;
+    document.querySelectorAll('.screen-view').forEach(s => { if (s.id !== 'scr-chat-room') s.classList.remove('active'); });
+    renderChatMessages();
+};
+
+function renderChatMessages() {
+    const chat = state.chats.find(c => c.id === state.activeChatId);
+    if (!chat) return;
+    const box = document.getElementById('chat-messages-container');
+    box.innerHTML = chat.messages.map(m => {
+        if (m.sender === 'system') return `<div class="system-message">${m.text}</div>`;
+        const isMe = m.sender === state.user.email;
+        return `<div class="msg-bubble ${isMe ? 'outgoing' : 'incoming'}">${m.text}<span class="msg-meta">${m.time || ''}</span></div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
 }
 
-@keyframes cardPopIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+document.getElementById('btn-send-message').addEventListener('click', async () => {
+    const input = document.getElementById('chat-input-field');
+    const txt = input.value.trim();
+    if (!txt || !state.activeChatId) return;
+    input.value = "";
+    await updateDoc(doc(db, "chats", state.activeChatId), {
+        messages: arrayUnion({ sender: state.user.email, text: txt, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+    });
+});
 
-/* SÉLECTION DE RÔLE */
-.role-selection-layout {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 80vh;
-  text-align: center;
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-.app-brand-logo {
-  font-size: 48px;
-  font-weight: 800;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-  letter-spacing: -1.5px;
-}
-
-.app-brand-tagline {
-  font-size: 15px;
-  color: var(--text-muted);
-  margin-bottom: 40px;
-  font-weight: 500;
-}
-
-.role-interactive-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 26px;
-  width: 100%;
-  margin-bottom: 18px;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.25s var(--ease-bounce), box-shadow 0.25s var(--ease-spring), border-color 0.25s;
-  box-shadow: var(--shadow-sm);
-}
-
-.role-interactive-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary);
-}
-
-.role-card-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin-bottom: 16px;
-  color: #fff;
-}
-.role-card-icon.owner { background: var(--primary-gradient); }
-.role-card-icon.tenant { background: var(--secondary-gradient); }
-
-.role-interactive-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-.role-interactive-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-
-/* HEADER & UTILS */
-.dashboard-ui-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 28px;
-  margin-top: 10px;
-  width: 100%;
-}
-
-.profile-greetings h2 { font-size: 22px; font-weight: 800; }
-.profile-greetings p { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
-
-.header-utility-actions { display: flex; gap: 12px; }
-
-.circle-action-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-main);
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s, background 0.2s;
-}
-.circle-action-btn:hover { transform: scale(1.05); }
-
-.auth-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
-.auth-subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
-.auth-toggle-link { text-align: center; font-size: 13px; margin-top: 24px; color: var(--primary); font-weight: 600; cursor: pointer; }
-
-/* KPI & STATS */
-.stats-grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
-
-.stats-kpi-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 20px;
-  border-radius: 22px;
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  overflow: hidden;
-}
-.stats-kpi-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
-.stats-kpi-card.blue-indicator::before { background: var(--primary); }
-.stats-kpi-card.green-indicator::before { background: var(--secondary); }
-
-.stats-kpi-header { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
-.stats-kpi-number { font-size: 26px; font-weight: 800; color: var(--text-main); }
-
-.revenue-box {
-  background: var(--surface);
-  padding: 20px 24px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
-}
-.revenue-box strong { font-size: 22px; color: var(--secondary); }
-
-.surface-box {
-  background: var(--surface);
-  padding: 24px;
-  border-radius: 24px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 20px;
-}
-.muted-text { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
-
-.pending-payment-box {
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 14px 18px;
-  border-radius: 16px;
-  margin-top: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.pending-payment-box span { font-size: 13px; color: #d97706; font-weight: 600; line-height: 1.4; }
-
-/* CARTES LOGEMENTS & GALERIE 4 PHOTOS HAUT DE GAMME */
-.apartment-card-ui {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 26px;
-  overflow: hidden;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.25s var(--ease-spring);
-}
-.apartment-card-ui:hover { box-shadow: var(--shadow-md); }
-
-.apartment-card-image-placeholder {
-  width: 100%;
-  height: 230px;
-  background: var(--input-bg);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.apartment-card-image-placeholder img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  position: absolute;
-  top: 0; left: 0;
-}
-
-.apartment-card-badge {
-  position: absolute;
-  top: 16px; right: 16px;
-  padding: 6px 14px;
-  border-radius: 20px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  z-index: 2;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.badge-dispo { background: rgba(16, 185, 129, 0.95); }
-.badge-loue { background: rgba(239, 68, 68, 0.95); }
-
-.gallery-miniatures {
-  display: flex;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--background);
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-}
-.gallery-miniatures::-webkit-scrollbar { height: 4px; }
-.gallery-miniatures::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-.gallery-miniatures img {
-  width: 54px;
-  height: 54px;
-  border-radius: 12px;
-  object-fit: cover;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: transform 0.2s var(--ease-bounce), border-color 0.2s;
-}
-.gallery-miniatures img.active-thumb, .gallery-miniatures img:hover {
-  border-color: var(--primary);
-  transform: scale(1.06);
-}
-
-.apartment-card-details { padding: 22px; }
-.apartment-card-location { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.6px; }
-.apartment-card-title { font-size: 18px; font-weight: 700; margin-top: 6px; margin-bottom: 6px; }
-.apartment-card-address-detail { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
-
-.kin-specs-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.kin-spec-tag { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 12px; background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border); }
-
-.apartment-card-pricing-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 14px; }
-.apartment-card-price { font-size: 20px; font-weight: 800; color: var(--text-main); }
-.apartment-card-price small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
-
-.tenant-actions-row { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.quick-contact-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 14px; font-size: 13px; font-weight: 700; text-decoration: none; transition: transform 0.2s; }
-.quick-contact-btn:active { transform: scale(0.97); }
-.quick-contact-btn.call { background: rgba(109, 40, 217, 0.1); color: var(--primary); }
-.quick-contact-btn.whatsapp { background: rgba(16, 185, 129, 0.12); color: var(--secondary); }
-
-/* ZONE UPLOAD MULTI-PHOTOS "WAOUH" */
-.photo-upload-zone {
-  border: 2px dashed rgba(109, 40, 217, 0.35);
-  background: var(--input-bg);
-  border-radius: 20px;
-  padding: 26px 18px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.25s var(--ease-spring);
-}
-.photo-upload-zone:hover {
-  border-color: var(--primary);
-  background: rgba(109, 40, 217, 0.04);
-  transform: translateY(-2px);
-}
-.upload-icon-circle {
-  width: 52px; height: 52px; border-radius: 50%;
-  background: rgba(109, 40, 217, 0.12); color: var(--primary);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; margin: 0 auto 12px auto;
-}
-.photo-upload-zone span { font-size: 13px; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px; }
-.photo-upload-zone small { font-size: 11px; color: var(--text-muted); }
-
-.photo-preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
-.preview-item { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); animation: cardPopIn 0.3s var(--ease-spring); }
-.preview-item img { width: 100%; height: 100%; object-fit: cover; }
-.btn-remove-photo { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(239, 68, 68, 0.95); color: #fff; border: none; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
-.btn-remove-photo:hover { transform: scale(1.1); }
-
-/* FORMULAIRES */
-.form-input-container { margin-bottom: 16px; position: relative; }
-.form-input-container.tight { margin-bottom: 10px; }
-.form-input-container label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
-.form-input-container i { position: absolute; left: 16px; top: 39px; color: var(--text-muted); font-size: 14px; }
-.form-input-container.no-icon i { top: 15px; }
-
-.form-input-container input, .form-input-container select, .form-input-container textarea {
-  width: 100%;
-  padding: 14px 16px 14px 44px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  color: var(--text-main);
-  font-size: 13px;
-  font-weight: 500;
-  outline: none;
-  transition: border-color 0.2s, background 0.2s;
-}
-.form-input-container.no-icon input, .form-input-container.no-icon select, .form-input-container textarea { padding-left: 14px; }
-.form-input-container input:focus, .form-input-container select:focus, .form-input-container textarea:focus { border-color: var(--primary); background: var(--surface); }
-
-.btn-submit-form {
-  width: 100%;
-  padding: 16px;
-  border-radius: 16px;
-  border: none;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-top: 10px;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s;
-}
-.btn-submit-form:active { transform: scale(0.98); }
-.btn-submit-form.owner-theme { background: var(--primary-gradient); }
-.btn-submit-form.tenant-theme { background: var(--secondary-gradient); }
-
-/* BOTTOM NAV ADAPTABLE */
-.bottom-navigation-bar {
-  position: fixed;
-  bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 600px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border);
-  height: 72px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.05);
-  z-index: 999;
-}
-
-.tab-navigation-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  height: 100%;
-  gap: 5px;
-  transition: color 0.2s;
-}
-.tab-navigation-item i { font-size: 18px; }
-.tab-navigation-item.active { color: var(--primary); }
-.tenant-theme .tab-navigation-item.active { color: var(--secondary); }
-
-/* RECHERCHE & FILTRES */
-.search-filter-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: 16px;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
-}
-.filter-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-.filter-tags-scroll { display: flex; gap: 8px; overflow-x: auto; padding-top: 12px; padding-bottom: 2px; }
-.filter-tags-scroll::-webkit-scrollbar { display: none; }
-
-.filter-tag {
-  padding: 7px 16px;
-  border-radius: 20px;
-  background: var(--input-bg);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-  transition: all 0.2s;
-}
-.filter-tag.active { background: var(--secondary); color: #fff; border-color: var(--secondary); }
-
-.action-context-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.context-title { font-size: 16px; font-weight: 700; }
-
-.btn-action-trigger {
-  background: var(--primary-gradient);
-  border: none;
-  border-radius: 14px;
-  color: #fff;
-  padding: 10px 16px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: var(--shadow-sm);
-}
-.btn-action-trigger.tenant-btn { background: var(--secondary-gradient); }
-.btn-action-trigger.danger-btn { background: #ef4444; }
-.btn-action-trigger.outline-btn { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border); }
-.btn-action-trigger.small-btn { padding: 7px 12px; font-size: 11px; }
-
-/* MESSAGERIE */
-.chat-list-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 16px;
-  border-radius: 20px;
-  margin-bottom: 14px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s;
-}
-.chat-list-item:hover { transform: translateY(-2px); }
-
-.chat-avatar {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: var(--input-bg);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 16px; color: var(--primary);
-  border: 1px solid var(--border); flex-shrink: 0;
-}
-.chat-info { flex: 1; min-width: 0; }
-.chat-info h4 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
-.chat-info p { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chat-context { color: var(--primary); font-size: 11px; font-weight: 700; margin-bottom: 2px; }
-
-.chat-header-bar {
-  display: flex; align-items: center; gap: 14px;
-  background: var(--surface); border: 1px solid var(--border);
-  padding: 16px; border-radius: 20px; margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
-}
-.chat-messages-scrollarea {
-  height: 56vh; overflow-y: auto; padding: 12px 6px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.msg-bubble {
-  max-width: 78%; padding: 14px 16px; border-radius: 18px; font-size: 13px; line-height: 1.5; box-shadow: var(--shadow-sm);
-}
-.msg-bubble.incoming { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; border-top-left-radius: 4px; }
-.msg-bubble.outgoing { background: var(--primary-gradient); color: #fff; align-self: flex-end; border-top-right-radius: 4px; }
-.tenant-theme .msg-bubble.outgoing { background: var(--secondary-gradient); }
-.msg-meta { display: block; font-size: 9px; text-align: right; margin-top: 4px; opacity: 0.75; }
-.system-message { text-align: center; font-size: 11px; color: var(--text-muted); margin: 8px 0; font-style: italic; }
-
-.chat-input-row {
-  display: flex; gap: 10px; margin-top: 14px;
-  background: var(--surface); border: 1px solid var(--border);
-  padding: 10px; border-radius: 18px; box-shadow: var(--shadow-sm);
-}
-.chat-input-row input { flex: 1; border: none; background: transparent; outline: none; padding-left: 10px; font-size: 13px; color: var(--text-main); }
-.btn-send-message {
-  width: 42px; height: 42px; border-radius: 14px;
-  background: var(--primary-gradient); border: none; color: #fff;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  box-shadow: var(--shadow-sm);
-}
-.tenant-theme .btn-send-message { background: var(--secondary-gradient); }
-
-.blank-slate { text-align: center; padding: 50px 20px; color: var(--text-muted); font-size: 13px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
-.blank-slate i { font-size: 36px; opacity: 0.4; }
-
-/* MODALES RESPONSIVE & AÉRÉES */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 20000;
-  padding: 16px;
-}
-.modal-box {
-  background: var(--surface); width: 100%; max-width: 540px; max-height: 90vh;
-  overflow-y: auto; border-radius: 28px; padding: 28px; box-shadow: var(--shadow-md);
-  animation: cardPopIn 0.35s var(--ease-spring);
-}
-.modal-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
-.modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+document.getElementById('btn-close-chat').addEventListener('click', () => {
+    state.activeChatId = null;
+    showScreen(state.user.role === 'owner' ? 'scr-owner-dashboard' : 'scr-tenant-dashboard');
+});
