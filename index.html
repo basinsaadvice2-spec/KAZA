@@ -19,13 +19,13 @@
             <div class="role-interactive-card" data-role="tenant">
                 <div class="role-card-icon tenant"><i class="fa-solid fa-magnifying-glass"></i></div>
                 <h3>Espace Locataire</h3>
-                <p>Explorez les logements par commune, budget, SNEL, eau et gérez votre loyer.</p>
+                <p>Trouvez votre logement par commune, budget flexible (heure, jour, mois), SNEL et eau.</p>
             </div>
 
             <div class="role-interactive-card" data-role="owner">
                 <div class="role-card-icon owner"><i class="fa-solid fa-key"></i></div>
                 <h3>Espace Bailleur</h3>
-                <p>Publiez vos biens, suivez vos revenus locatifs et validez les paiements.</p>
+                <p>Publiez vos biens avec vos propres tarifs flexibles, suivez vos revenus et validez les paiements.</p>
             </div>
         </div>
     </section>
@@ -40,7 +40,7 @@
         </div>
 
         <h2 class="auth-title" id="auth-title">Connexion</h2>
-        <p class="auth-subtitle" id="auth-subtitle">Accès strictement réservé à votre espace.</p>
+        <p class="auth-subtitle" id="auth-subtitle">Votre session reste enregistrée sur cet appareil.</p>
 
         <div id="register-fields" style="display: none;">
             <div class="form-input-container">
@@ -112,18 +112,20 @@
                     <input type="number" id="filter-max-price" placeholder="Budget Max ($)">
                 </div>
                 <div class="form-input-container tight no-icon">
+                    <select id="filter-rate-type">
+                        <option value="">Tous les tarifs</option>
+                        <option value="hour">Par Heure</option>
+                        <option value="day">Par Jour</option>
+                        <option value="week">Par Semaine</option>
+                        <option value="month">Par Mois</option>
+                    </select>
+                </div>
+                <div class="form-input-container tight no-icon">
                     <select id="filter-snel">
                         <option value="">SNEL (Tout)</option>
                         <option value="Cash Power">Cash Power</option>
                         <option value="Forfait">Forfait SNEL</option>
                         <option value="Groupe/Solaire">Groupe / Solaire</option>
-                    </select>
-                </div>
-                <div class="form-input-container tight no-icon">
-                    <select id="filter-water">
-                        <option value="">Eau (Tout)</option>
-                        <option value="Regideso">Regideso</option>
-                        <option value="Forage/Citerne">Forage / Citerne</option>
                     </select>
                 </div>
             </div>
@@ -203,14 +205,14 @@
         </div>
     </section>
 
-    <!-- MODALE PUBLICATION BIEN (4 PHOTOS MAX) -->
+    <!-- MODALE PUBLICATION BIEN (4 PHOTOS MAX & TARIFS FLEXIBLES) -->
     <div id="add-appart-modal" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <h3>Publier un nouveau bien</h3>
             
             <div class="form-input-container no-icon">
                 <label>Titre de l'annonce</label>
-                <input type="text" id="new-title" placeholder="Ex: Appartement 2 chambres moderne">
+                <input type="text" id="new-title" placeholder="Ex: Studio meublé climatisé">
             </div>
 
             <div class="filter-grid-2">
@@ -237,21 +239,36 @@
 
             <div class="form-input-container no-icon">
                 <label>Avenue et Point de référence précis</label>
-                <input type="text" id="new-ref" placeholder="Ex: Av. Kasavubu, Réf: Arrêt Socimat">
+                <input type="text" id="new-ref" placeholder="Ex: Av. du 24 Novembre, Réf: Rond-point Victoire">
+            </div>
+
+            <div style="background:var(--input-bg); border:1px solid var(--border); padding:14px; border-radius:16px; margin-bottom:14px;">
+                <label style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:8px; display:block;">Définissez vos tarifs (Remplissez au moins une option)</label>
+                <div class="filter-grid-2" style="margin-top:0;">
+                    <div class="form-input-container tight no-icon" style="margin-bottom:8px;">
+                        <label>Prix par Heure ($)</label>
+                        <input type="number" id="price-hour" placeholder="Ex: 5">
+                    </div>
+                    <div class="form-input-container tight no-icon" style="margin-bottom:8px;">
+                        <label>Prix par Jour ($)</label>
+                        <input type="number" id="price-day" placeholder="Ex: 30">
+                    </div>
+                    <div class="form-input-container tight no-icon" style="margin-bottom:0;">
+                        <label>Prix par Semaine ($)</label>
+                        <input type="number" id="price-week" placeholder="Ex: 150">
+                    </div>
+                    <div class="form-input-container tight no-icon" style="margin-bottom:0;">
+                        <label>Prix par Mois ($)</label>
+                        <input type="number" id="price-month" placeholder="Ex: 350">
+                    </div>
+                </div>
             </div>
 
             <div class="filter-grid-2">
-                <div class="form-input-container no-icon">
-                    <label>Loyer Mensuel ($)</label>
-                    <input type="number" id="new-price" placeholder="350">
-                </div>
                 <div class="form-input-container no-icon">
                     <label>Garantie locative</label>
-                    <input type="text" id="new-garantie" placeholder="Ex: 3 mois + 1">
+                    <input type="text" id="new-garantie" placeholder="Ex: 2 mois + 1">
                 </div>
-            </div>
-
-            <div class="filter-grid-2">
                 <div class="form-input-container no-icon">
                     <label>Électricité (SNEL)</label>
                     <select id="new-snel">
@@ -260,6 +277,9 @@
                         <option value="Groupe/Solaire">Groupe / Solaire</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="filter-grid-2">
                 <div class="form-input-container no-icon">
                     <label>Accès Eau</label>
                     <select id="new-water">
@@ -267,19 +287,18 @@
                         <option value="Forage/Citerne">Forage / Citerne</option>
                     </select>
                 </div>
-            </div>
-
-            <div class="form-input-container no-icon">
-                <label>Lien Google Maps (Optionnel)</label>
-                <input type="url" id="new-maps" placeholder="https://maps.google.com/...">
+                <div class="form-input-container no-icon">
+                    <label>Lien Google Maps (Optionnel)</label>
+                    <input type="url" id="new-maps" placeholder="https://maps.google.com/...">
+                </div>
             </div>
 
             <div class="form-input-container no-icon">
                 <label>Photos du logement (<span id="photo-counter">0</span>/4 max • 5 Mo/photo)</label>
                 <div class="photo-upload-zone" id="photo-drop-zone">
-                    <i class="fa-solid fa-camera-retro"></i>
-                    <span>Ajouter jusqu'à 4 photos</span>
-                    <small>JPG, PNG ou WEBP</small>
+                    <div class="upload-icon-circle"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <span>Cliquez ou glissez vos photos ici</span>
+                    <small>Formats acceptés : JPG, PNG, WEBP (Max 4 images)</small>
                     <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
                 </div>
                 <div id="photo-preview-container" class="photo-preview-grid"></div>
@@ -295,7 +314,7 @@
     <!-- MODALE QUITTANCE -->
     <div id="receipt-modal" class="modal-overlay" style="display:none;">
         <div class="modal-box" id="receipt-printable">
-            <h3><i class="fa-solid fa-file-invoice-dollar" style="color:var(--secondary);"></i> Quittance de Loyer</h3>
+            <h3><i class="fa-solid fa-file-invoice-dollar" style="color:var(--secondary);"></i> Quittance / Reçu</h3>
             <div id="receipt-body" style="font-size:13px; line-height:1.8;"></div>
             <div class="modal-actions">
                 <button id="btn-close-receipt" class="btn-submit-form" style="background:var(--text-muted);">Fermer</button>
