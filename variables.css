@@ -1,0 +1,27 @@
+:root {
+  --background: #f4f2f8;
+  --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.9);
+  --text-main: #1e1b2e;
+  --text-muted: #6b6682;
+  --border: #e5e0f0;
+  --input-bg: #f8fafc;
+  --primary: #6d28d9;
+  --primary-gradient: linear-gradient(135deg, #6d28d9 0%, #10b981 100%);
+  --secondary: #10b981;
+  --secondary-gradient: linear-gradient(135deg, #10b981, #059669);
+  --shadow-sm: 0 4px 20px rgba(109, 40, 217, 0.06);
+  --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dark-mode {
+  --background: #0f0c1d;
+  --surface: #1a152e;
+  --surface-glass: rgba(26, 21, 46, 0.9);
+  --text-main: #f5f3ff;
+  --text-muted: #a59ec2;
+  --border: #2d264a;
+  --input-bg: #110f22;
+  --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.6);
+}
