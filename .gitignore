@@ -1,0 +1,13 @@
+node_modules/
+functions/node_modules/
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.env
+.env.*
+!.env.example
+*service-account*.json
+*.keystore
+*.jks
+*.aab
+android/**/build/

@@ -3,7 +3,6 @@ import { state } from './state.js';
 import { bus } from './bus.js';
 import { $, esc, toast, onAction, bindActions, openModal, closeModal, requireRole } from './ui.js';
 import { addView } from './views.js';
-import { notify } from './notify.js';
 import { ratesOf, receiptNo, fmtDate } from './format.js';
 let unsub = null;
 const PRINT_CSS = '<style>@media print{body>*:not(#receipt-modal){display:none!important}#receipt-modal{position:static!important;background:none!important;backdrop-filter:none!important;display:block!important}#receipt-modal .modal-box{box-shadow:none;max-height:none;background:#fff;color:#000}#receipt-modal .modal-actions{display:none}}</style>';
@@ -57,7 +56,6 @@ export default {
       const a = state.apartments.find(x => x.id === $('payment-modal').dataset.aptId), amount = Number($('pay-amount').value), period = $('pay-period').value;
       if (!a || !(amount > 0) || !period) throw new Error('Renseignez le montant et la période.');
       await addDoc(collection(db, 'payments'), { aptId: a.id, aptTitle: a.title, ownerUid: a.ownerUid, tenantUid: state.user.uid, tenantName: state.user.name, amount, period, method: $('pay-method').value, reference: $('pay-ref').value.trim(), status: 'En attente', createdAt: serverTimestamp() });
-      await notify(a.ownerUid, 'payment', 'Paiement déclaré', `${state.user.name} déclare ${amount} $ pour ${period} (${a.title}).`, { tab: 'owner-payments' });
       closeModal('payment-modal'); toast('Paiement signalé au bailleur.', 'ok');
     });
     onAction('pay-validate', async (el) => {
@@ -67,7 +65,6 @@ export default {
       b.update(doc(db, 'payments', p.id), { status: 'Validé', decidedAt: serverTimestamp(), receiptNo: receiptNo(p) });
       b.update(doc(db, 'apartments', p.aptId), { paymentStatus: 'À jour' });
       await b.commit();
-      await notify(p.tenantUid, 'payment', 'Paiement validé', `Votre paiement de ${p.period} est validé. Quittance disponible.`, { tab: 'my-rental' });
       toast('Paiement validé. Quittance générée.', 'ok');
     });
     onAction('pay-refuse', async (el) => {
@@ -77,7 +74,7 @@ export default {
       const b = writeBatch(db);
       b.update(doc(db, 'payments', p.id), { status: 'Refusé', decidedAt: serverTimestamp(), refusalReason: reason.trim() });
       await b.commit();
-      await notify(p.tenantUid, 'payment', 'Paiement refusé', `Votre paiement de ${p.period} a été refusé.${reason ? ' Motif : ' + reason : ''}`, { tab: 'my-rental' });
+      toast('Paiement refusé. Le locataire en sera informé.', 'ok');
     });
     onAction('view-receipt', (el) => {
       const p = state.payments.find(x => x.id === el.dataset.id); if (!p || p.status !== 'Validé') throw new Error('Quittance indisponible.');

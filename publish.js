@@ -1,59 +1,203 @@
-import { db, storage, doc, setDoc, serverTimestamp, ref, uploadBytes, getDownloadURL } from './firebase.js';
+import { db, storage, collection, doc, setDoc, updateDoc, serverTimestamp, ref, uploadBytes, getDownloadURL, deleteObject } from './firebase.js';
 import { state } from './state.js';
-import { $, esc, toast, onAction, bindActions, closeModal, requireRole } from './ui.js';
+import { $, esc, toast, onAction, bindActions, closeModal, openModal, requireRole } from './ui.js';
 
 const OK_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const FIELDS = ['new-title', 'new-ref', 'new-landmark', 'price-hour', 'price-day', 'price-week', 'price-month', 'new-garantie', 'new-maps'];
+const FIELDS = [
+  'new-title', 'new-type', 'new-commune', 'new-ref', 'new-landmark', 'new-property-number',
+  'new-unit-number', 'new-building-name', 'price-hour', 'price-day', 'price-week', 'price-month',
+  'new-garantie', 'new-snel', 'new-water', 'new-maps'
+];
+let previewUrls = [];
+
+function revokePreviews() {
+  previewUrls.forEach((url) => URL.revokeObjectURL(url));
+  previewUrls = [];
+}
+
+function updatePropertyFields() {
+  const type = $('new-type').value;
+  const isUnit = type === 'Appartement' || type === 'Studio';
+  $('property-number-wrap').style.display = isUnit ? 'none' : 'block';
+  $('property-number-label').textContent = type === 'Parcelle' ? 'Numéro de parcelle' : 'Numéro de maison';
+  $('unit-number-wrap').style.display = isUnit ? 'block' : 'none';
+  $('building-name-wrap').style.display = isUnit ? 'block' : 'none';
+}
 
 function previews() {
-  $('photo-counter').innerText = state.selectedFiles.length;
-  $('photo-preview-container').innerHTML = state.selectedFiles.map((f, i) => `<div class="preview-item"><img src="${esc(URL.createObjectURL(f))}" alt=""><button type="button" class="btn-remove-photo" data-action="remove-photo" data-idx="${i}"><i class="fa-solid fa-xmark"></i></button></div>`).join('');
+  revokePreviews();
+  const existing = state.selectedExistingPhotos.map((photo, index) =>
+    `<div class="preview-item"><img src="${esc(photo.url)}" alt="Photo existante ${index + 1}"><button type="button" class="btn-remove-photo" data-action="remove-existing-photo" data-idx="${index}" aria-label="Retirer la photo ${index + 1}"><i class="fa-solid fa-xmark"></i></button></div>`
+  ).join('');
+  const added = state.selectedFiles.map((file, index) => {
+    const url = URL.createObjectURL(file);
+    previewUrls.push(url);
+    return `<div class="preview-item"><img src="${url}" alt="Nouvelle photo ${index + 1}"><button type="button" class="btn-remove-photo" data-action="remove-photo" data-idx="${index}" aria-label="Retirer la nouvelle photo ${index + 1}"><i class="fa-solid fa-xmark"></i></button></div>`;
+  }).join('');
+  $('photo-counter').innerText = state.selectedExistingPhotos.length + state.selectedFiles.length;
+  $('photo-preview-container').innerHTML = existing + added;
 }
-function reset() { FIELDS.forEach(id => { $(id).value = ''; }); state.selectedFiles = []; previews(); }
+
+function emptyForm() {
+  FIELDS.forEach((id) => { $(id).value = ''; });
+  $('new-type').value = 'Appartement';
+  $('new-commune').value = 'Gombe';
+  $('new-snel').value = 'Cash Power';
+  $('new-water').value = 'Regideso';
+  state.selectedFiles = [];
+  state.selectedExistingPhotos = [];
+  state.editingApartmentId = null;
+  $('publish-modal-title').innerText = 'Publier un nouveau bien';
+  $('btn-save-appart').innerText = 'Publier';
+  updatePropertyFields();
+  previews();
+}
+
+function setEditForm(apartment) {
+  requireRole('owner');
+  if (!apartment || apartment.ownerUid !== state.user.uid) throw new Error('Cette annonce ne vous appartient pas.');
+  const rates = apartment.rates || { month: apartment.price || 0 };
+  $('new-title').value = apartment.title || '';
+  $('new-type').value = apartment.type || 'Appartement';
+  $('new-commune').value = apartment.commune || 'Gombe';
+  $('new-ref').value = apartment.avenue || apartment.reference || '';
+  $('new-landmark').value = apartment.landmark || '';
+  $('new-property-number').value = apartment.propertyNumber || '';
+  $('new-unit-number').value = apartment.unitNumber || '';
+  $('new-building-name').value = apartment.buildingName || '';
+  $('price-hour').value = rates.hour || '';
+  $('price-day').value = rates.day || '';
+  $('price-week').value = rates.week || '';
+  $('price-month').value = rates.month || '';
+  $('new-garantie').value = apartment.garantie || '';
+  $('new-snel').value = apartment.snel || 'Cash Power';
+  $('new-water').value = apartment.water || 'Regideso';
+  $('new-maps').value = apartment.mapsUrl || '';
+  state.selectedFiles = [];
+  state.selectedExistingPhotos = (apartment.photos || (apartment.photoUrl ? [apartment.photoUrl] : [])).map((url, index) => ({
+    url,
+    path: apartment.photoPaths?.[index] || null
+  }));
+  state.editingApartmentId = apartment.id;
+  $('publish-modal-title').innerText = 'Modifier cette annonce';
+  $('btn-save-appart').innerText = 'Enregistrer les modifications';
+  updatePropertyFields();
+  previews();
+  openModal('add-appart-modal');
+}
+
+function selectedPhotos() {
+  const type = $('new-type').value;
+  const isUnit = type === 'Appartement' || type === 'Studio';
+  return {
+    propertyNumber: isUnit ? '' : $('new-property-number').value.trim(),
+    unitNumber: isUnit ? $('new-unit-number').value.trim() : '',
+    buildingName: isUnit ? $('new-building-name').value.trim() : ''
+  };
+}
 
 export default {
   name: 'publish',
   init() {
-    bindActions({ '#btn-save-appart': 'publish-save', '#btn-cancel-add': 'publish-cancel', '#photo-drop-zone': 'pick-photos' });
+    bindActions({
+      '#btn-save-appart': 'publish-save',
+      '#btn-cancel-add': 'publish-cancel',
+      '#photo-drop-zone': 'pick-photos'
+    });
+    $('new-type').addEventListener('change', updatePropertyFields);
     const input = $('new-photo');
-    onAction('pick-photos', (el, e) => { if (e.target !== input) input.click(); });
+    onAction('open-publish', () => { requireRole('owner'); emptyForm(); openModal('add-appart-modal'); });
+    onAction('edit-apart', (el) => {
+      const apartment = state.apartments.find((item) => item.id === el.dataset.id);
+      setEditForm(apartment);
+    });
+    onAction('pick-photos', (el, event) => { if (event.target !== input) input.click(); });
     input.addEventListener('change', () => {
-      for (const f of Array.from(input.files)) {
-        if (state.selectedFiles.length >= 4) { toast('Maximum 4 photos.', 'error'); break; }
-        if (!OK_TYPES.includes(f.type)) { toast(`${f.name} : format refusé (JPG, PNG ou WEBP).`, 'error'); continue; }
-        if (f.size > 5 * 1024 * 1024) { toast(`${f.name} : plus de 5 Mo.`, 'error'); continue; }
-        state.selectedFiles.push(f);
+      for (const file of Array.from(input.files || [])) {
+        if (state.selectedExistingPhotos.length + state.selectedFiles.length >= 4) { toast('Maximum 4 photos.', 'error'); break; }
+        if (!OK_TYPES.includes(file.type)) { toast(`${file.name} : format refusé (JPG, PNG ou WEBP).`, 'error'); continue; }
+        if (file.size > 5 * 1024 * 1024) { toast(`${file.name} : plus de 5 Mo.`, 'error'); continue; }
+        state.selectedFiles.push(file);
       }
-      input.value = ''; previews();
+      input.value = '';
+      previews();
     });
     onAction('remove-photo', (el) => { state.selectedFiles.splice(Number(el.dataset.idx), 1); previews(); });
-    onAction('publish-cancel', () => closeModal('add-appart-modal'));
+    onAction('remove-existing-photo', (el) => { state.selectedExistingPhotos.splice(Number(el.dataset.idx), 1); previews(); });
+    onAction('publish-cancel', () => { closeModal('add-appart-modal'); emptyForm(); });
 
     onAction('publish-save', async () => {
       requireRole('owner');
-      const title = $('new-title').value.trim(), avenue = $('new-ref').value.trim(), landmark = $('new-landmark').value.trim();
+      const title = $('new-title').value.trim();
+      const avenue = $('new-ref').value.trim();
+      const landmark = $('new-landmark').value.trim();
       const reference = [avenue, landmark].filter(Boolean).join(' — ');
-      const rates = { hour: Number($('price-hour').value) || 0, day: Number($('price-day').value) || 0, week: Number($('price-week').value) || 0, month: Number($('price-month').value) || 0 };
-      if (!title || !avenue) throw new Error('Remplissez le titre et l\'avenue.');
-      if (!Object.values(rates).some(v => v > 0)) throw new Error('Renseignez au moins un tarif.');
-      if (!state.selectedFiles.length) throw new Error('Ajoutez au moins une photo.');
-      const photos = [], photoPaths = [];
-      for (let i = 0; i < state.selectedFiles.length; i++) {
-        const f = state.selectedFiles[i], path = `apartments/${state.user.uid}/${Date.now()}_${i}_${f.name.replace(/[^\w.-]/g, '_')}`;
-        const r = ref(storage, path);
-        await uploadBytes(r, f, { contentType: f.type });
-        photos.push(await getDownloadURL(r)); photoPaths.push(path);
+      const rates = Object.fromEntries(['hour', 'day', 'week', 'month'].map((key) => {
+        const value = Number($(`price-${key}`).value);
+        return [key, Number.isFinite(value) && value > 0 ? value : 0];
+      }));
+      if (!title || !avenue) throw new Error('Remplissez le titre et l’avenue.');
+      if (!Object.values(rates).some((value) => value > 0)) throw new Error('Renseignez au moins un tarif positif.');
+      if (!state.selectedFiles.length && !state.selectedExistingPhotos.length) throw new Error('Ajoutez au moins une photo.');
+      if (!navigator.onLine) throw new Error('La publication nécessite une connexion Internet. Réessayez lorsque vous serez en ligne.');
+
+      const editingId = state.editingApartmentId;
+      const previous = editingId ? state.apartments.find((item) => item.id === editingId) : null;
+      if (editingId && (!previous || previous.ownerUid !== state.user.uid)) throw new Error('Annonce introuvable ou accès refusé.');
+      const photos = state.selectedExistingPhotos.map((photo) => photo.url);
+      const photoPaths = state.selectedExistingPhotos.map((photo) => photo.path);
+      const uploadedPaths = [];
+      try {
+        for (let index = 0; index < state.selectedFiles.length; index++) {
+          const file = state.selectedFiles[index];
+          const path = `apartments/${state.user.uid}/${crypto.randomUUID()}_${index}_${file.name.replace(/[^\w.-]/g, '_')}`;
+          const storageRef = ref(storage, path);
+          await uploadBytes(storageRef, file, { contentType: file.type });
+          photos.push(await getDownloadURL(storageRef));
+          photoPaths.push(path);
+          uploadedPaths.push(path);
+        }
+
+        const id = editingId || doc(collection(db, 'apartments')).id;
+        const payload = {
+          id,
+          title,
+          avenue,
+          landmark,
+          reference,
+          rates,
+          price: rates.month || rates.day || rates.hour || rates.week || 0,
+          type: $('new-type').value,
+          commune: $('new-commune').value,
+          ...selectedPhotos(),
+          garantie: $('new-garantie').value.trim() || 'À discuter',
+          snel: $('new-snel').value,
+          water: $('new-water').value,
+          mapsUrl: $('new-maps').value.trim(),
+          photos,
+          photoUrl: photos[0],
+          photoPaths,
+          ownerUid: state.user.uid,
+          ownerEmail: state.user.email,
+          ownerName: state.user.name,
+          ownerPhone: state.user.phone || '',
+          ownerType: state.user.accountType || 'owner',
+          updatedAt: serverTimestamp(),
+          ...(editingId ? {} : { status: 'Disponible', createdAt: serverTimestamp() })
+        };
+        if (editingId) await updateDoc(doc(db, 'apartments', editingId), payload);
+        else await setDoc(doc(db, 'apartments', id), payload);
+      } catch (error) {
+        await Promise.allSettled(uploadedPaths.map((path) => deleteObject(ref(storage, path))));
+        throw error;
       }
-      const id = 'apt_' + Date.now();
-      await setDoc(doc(db, 'apartments', id), {
-        id, title, avenue, landmark, reference, rates, price: rates.month || rates.day || rates.hour || rates.week || 0,
-        type: $('new-type').value, commune: $('new-commune').value, garantie: $('new-garantie').value.trim() || 'À discuter',
-        snel: $('new-snel').value, water: $('new-water').value, mapsUrl: $('new-maps').value.trim(),
-        photos, photoUrl: photos[0], photoPaths, status: 'Disponible', createdAt: serverTimestamp(),
-        ownerUid: state.user.uid, ownerEmail: state.user.email, ownerName: state.user.name, ownerPhone: state.user.phone || ''
-      });
-      closeModal('add-appart-modal'); reset();
-      toast('Annonce publiée.', 'ok');
+
+      const keptPaths = new Set(photoPaths.filter(Boolean));
+      const removedPaths = (previous?.photoPaths || []).filter((path) => path && !keptPaths.has(path));
+      await Promise.allSettled(removedPaths.map((path) => deleteObject(ref(storage, path))));
+      closeModal('add-appart-modal');
+      emptyForm();
+      toast(editingId ? 'Annonce mise à jour.' : 'Annonce publiée.', 'ok');
     });
   }
 };

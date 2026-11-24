@@ -1,0 +1,11 @@
+{
+  "applicationId": "com.basinsaadvice2.kaza",
+  "host": "kaza-sigma.vercel.app",
+  "startUrl": "/",
+  "name": "KAZA — Logement à Kinshasa",
+  "launcherName": "KAZA",
+  "themeColor": "#6d28d9",
+  "backgroundColor": "#f4f2f8",
+  "display": "standalone",
+  "iconUrl": "https://kaza-sigma.vercel.app/icons/kaza-512.png"
+}

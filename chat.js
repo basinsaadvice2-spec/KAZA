@@ -4,10 +4,8 @@ import { bus } from './bus.js';
 import { $, esc, onAction, bindActions, showScreen, requireRole } from './ui.js';
 import { addView, show } from './views.js';
 import { ensureChat, postMessage } from './chat-service.js';
-import { notify } from './notify.js';
 let chats = [], unsubList = null, unsubMsgs = null, active = null;
 const other = (c) => state.user.uid === c.ownerUid ? c.tenantName : c.ownerName;
-const otherUid = (c) => state.user.uid === c.ownerUid ? c.tenantUid : c.ownerUid;
 const time = (ts) => ts && ts.toDate ? ts.toDate().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
 
 function renderList(box) {
@@ -63,10 +61,8 @@ export default {
     onAction('chat-send', async () => {
       const input = $('chat-input-field'), text = input.value.trim();
       if (!text || !active) return;
-      const known = chats.find(x => x.id === active.id) || active, wasMine = known.lastSender === state.user.uid;
       input.value = '';
       try { await postMessage(active.id, text); } catch (e) { input.value = text; throw e; }
-      if (!wasMine) notify(otherUid(active), 'chat', `Message de ${state.user.name}`, text.slice(0, 80), { chatId: active.id });
     });
   }
 };

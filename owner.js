@@ -30,7 +30,9 @@ function render(box) {
     const p = safeUrl(photosOf(a)[0]);
     return `<div class="apartment-card-ui"><div class="apartment-card-image-placeholder">${p ? `<img class="main-photo" src="${esc(p)}" alt="${esc(a.title)}">` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>'}<span class="apartment-card-badge ${BADGE[a.status] || 'badge-loue'}">${esc(a.status)}</span></div>${thumbs(a)}
       <div class="apartment-card-details"><div class="apartment-card-location">${esc(a.commune)}</div><div class="apartment-card-title">${esc(a.title)}</div>
+      ${(a.propertyNumber || a.unitNumber || a.buildingName) ? `<div class="apartment-card-address-detail">${esc([a.unitNumber ? `Appartement ${a.unitNumber}` : a.propertyNumber ? `N° ${a.propertyNumber}` : '', a.buildingName].filter(Boolean).join(' • '))}</div>` : ''}
       <div class="apartment-card-pricing-row"><div class="apartment-card-price" style="font-size:15px;">${esc(ratesText(a))}</div>
+      <div class="owner-apartment-actions"><button class="btn-action-trigger outline-btn small-btn" data-action="edit-apart" data-id="${esc(a.id)}">Modifier</button>
       ${a.status === 'Disponible' ? `<button class="btn-action-trigger danger-btn small-btn" data-action="delete-apart" data-id="${esc(a.id)}">Supprimer</button>` : ''}</div></div></div>`;
   }).join('') : '<div class="blank-slate"><i class="fa-solid fa-building"></i><p>Aucun bien publié.</p></div>';
 

@@ -1,0 +1,9 @@
+{
+  "name": "kaza-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check main.js && node --check sw.js && node --check functions/index.js && node --check functions/criteria.js",
+    "test": "node --test tests/logic.test.mjs"
+  }
+}

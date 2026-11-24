@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "KAZA — Logement à Kinshasa",
+  "short_name": "KAZA",
+  "description": "Trouvez un logement ou publiez votre bien à Kinshasa.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#f4f2f8",
+  "theme_color": "#6d28d9",
+  "lang": "fr-CD",
+  "categories": ["housing", "lifestyle"],
+  "icons": [
+    { "src": "/icons/kaza-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/kaza-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

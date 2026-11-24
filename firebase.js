@@ -1,12 +1,13 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
-export * from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-export * from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
-export * from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
+export * from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+export * from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+export * from "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
+export * from "https://www.gstatic.com/firebasejs/13.4.0/firebase-messaging.js";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDIZPv2R6N2XfTPepTPSHk3WKVLqjkpy6g",
   authDomain: "kaza-bf0dc.firebaseapp.com",
   projectId: "kaza-bf0dc",

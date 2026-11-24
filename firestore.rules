@@ -1,51 +1,184 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
     function me() { return request.auth.uid; }
-    function role() { return get(/databases/$(db)/documents/users/$(me())).data.role; }
+    function userPath(uid) { return /databases/$(db)/documents/users/$(uid); }
+    function apartmentPath(id) { return /databases/$(db)/documents/apartments/$(id); }
+    function role() { return get(userPath(me())).data.get('role', null); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function tenantKeys() { return ['status','tenantUid','tenantName','paymentStatus','reservedAt','departureRequested']; }
+    function listingKeys() {
+      return ['id','title','avenue','landmark','reference','rates','price','type','commune',
+        'propertyNumber','unitNumber','buildingName','garantie','snel','water','mapsUrl',
+        'photos','photoUrl','photoPaths','ownerEmail','ownerName','ownerPhone','ownerType','updatedAt'];
+    }
+    function clearsTenant() {
+      return request.resource.data.status == 'Disponible'
+        && request.resource.data.get('tenantUid', null) == null
+        && request.resource.data.get('tenantName', null) == null
+        && request.resource.data.get('paymentStatus', null) == null
+        && request.resource.data.get('departureRequested', false) == false
+        && request.resource.data.get('reservedAt', null) == null;
+    }
 
     match /users/{uid} {
-      allow read: if request.auth != null && me() == uid;
-      allow create: if request.auth != null && me() == uid && request.resource.data.uid == uid && request.resource.data.role in ['owner','tenant'];
-      allow update: if request.auth != null && me() == uid && request.resource.data.role == resource.data.role;
-    }
-    match /apartments/{id} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && role() == 'owner' && request.resource.data.ownerUid == me() && request.resource.data.status == 'Disponible';
-      allow update: if request.auth != null && (
-        (resource.data.ownerUid == me() && request.resource.data.ownerUid == resource.data.ownerUid)
-        || (role() == 'tenant' && resource.data.status == 'Disponible' && request.resource.data.status == 'Réservé' && request.resource.data.tenantUid == me() && changed().hasOnly(tenantKeys()))
-        || (resource.data.get('tenantUid', null) == me() && resource.data.status == 'Réservé' && request.resource.data.status == 'Disponible' && changed().hasOnly(tenantKeys()))
-        || (resource.data.get('tenantUid', null) == me() && resource.data.status == 'Loué' && changed().hasOnly(['departureRequested'])));
-      allow delete: if request.auth != null && resource.data.ownerUid == me() && resource.data.status == 'Disponible';
-    }
- 
-    match /payments/{id} {
-      allow read: if request.auth != null && (resource.data.ownerUid == me() || resource.data.tenantUid == me());
-      allow create: if request.auth != null && request.resource.data.tenantUid == me() && request.resource.data.status == 'En attente'
-        && get(/databases/$(db)/documents/apartments/$(request.resource.data.aptId)).data.get('tenantUid', null) == me()
-        && get(/databases/$(db)/documents/apartments/$(request.resource.data.aptId)).data.status == 'Loué'
-        && get(/databases/$(db)/documents/apartments/$(request.resource.data.aptId)).data.ownerUid == request.resource.data.ownerUid;
-      allow update: if request.auth != null && resource.data.ownerUid == me() && resource.data.status == 'En attente'
-        && request.resource.data.status in ['Validé', 'Refusé'] && changed().hasOnly(['status','decidedAt','receiptNo','refusalReason']);
-    }
-    match /chats/{cid} {
-      allow get: if request.auth != null && (resource == null || me() in resource.data.participants);
-      allow list: if request.auth != null && me() in resource.data.participants;
-      allow create: if request.auth != null && me() in request.resource.data.participants && request.resource.data.participants.size() == 2
-        && cid == request.resource.data.aptId + '_' + request.resource.data.tenantUid;
-      allow update: if request.auth != null && me() in resource.data.participants && changed().hasOnly(['lastMessage','lastAt','lastSender']);
-      match /messages/{mid} {
-        allow read: if request.auth != null && me() in get(/databases/$(db)/documents/chats/$(cid)).data.participants;
-        allow create: if request.auth != null && me() in get(/databases/$(db)/documents/chats/$(cid)).data.participants && request.resource.data.senderUid == me();
+      allow read: if signedIn() && me() == uid;
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role in ['owner', 'tenant']
+        && ((request.resource.data.role == 'owner' && request.resource.data.accountType in ['owner', 'agency'])
+          || (request.resource.data.role == 'tenant' && request.resource.data.accountType == 'tenant'));
+      allow update: if signedIn() && me() == uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notificationPrefs','savedSearch']);
+      allow delete: if false;
+
+      match /pushTokens/{fidId} {
+        function validPushData() {
+          return request.resource.data.keys().hasOnly(['fid','enabled','createdAt','updatedAt'])
+            && request.resource.data.fid is string
+            && request.resource.data.enabled == true;
+        }
+        allow read, delete: if signedIn() && me() == uid;
+        allow create, update: if signedIn() && me() == uid && validPushData();
+      }
+
+      match /followedApartments/{apartmentId} {
+        function pairedFollowerExists() {
+          return existsAfter(/databases/$(db)/documents/apartments/$(apartmentId)/followers/$(me()));
+        }
+        allow read: if signedIn() && me() == uid && role() == 'tenant';
+        allow create: if signedIn() && me() == uid && role() == 'tenant'
+          && request.resource.data.uid == uid
+          && request.resource.data.apartmentId == apartmentId
+          && request.resource.data.keys().hasOnly(['uid','apartmentId','ownerUid','title','createdAt'])
+          && get(apartmentPath(apartmentId)).data.status == 'Disponible'
+          && get(apartmentPath(apartmentId)).data.ownerUid == request.resource.data.ownerUid
+          && pairedFollowerExists();
+        allow delete: if signedIn() && me() == uid && role() == 'tenant'
+          && !pairedFollowerExists();
+        allow update: if false;
       }
     }
+
+    match /publicProfiles/{uid} {
+      allow get: if signedIn() && (me() == uid || (role() == 'tenant' && resource.data.role == 'owner'));
+      allow list: if false;
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role == get(userPath(uid)).data.role
+        && request.resource.data.role in ['owner', 'tenant']
+        && ((request.resource.data.role == 'owner' && request.resource.data.accountType in ['owner', 'agency'])
+          || (request.resource.data.role == 'tenant' && request.resource.data.accountType == 'tenant'))
+        && request.resource.data.keys().hasOnly(['uid','name','phone','role','accountType']);
+      allow update: if signedIn() && me() == uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.role == get(userPath(uid)).data.role
+        && ((request.resource.data.role == 'owner' && request.resource.data.accountType in ['owner', 'agency'])
+          || (request.resource.data.role == 'tenant' && request.resource.data.accountType == 'tenant'))
+        && request.resource.data.keys().hasOnly(['uid','name','phone','role','accountType']);
+      allow delete: if false;
+    }
+
+    match /apartments/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && role() == 'owner'
+        && request.resource.data.ownerUid == me()
+        && request.resource.data.status == 'Disponible';
+      allow update: if signedIn() && (
+        (resource.data.ownerUid == me() && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.status == resource.data.status && changed().hasOnly(listingKeys()))
+        || (resource.data.ownerUid == me() && resource.data.status == 'Réservé'
+          && request.resource.data.status == 'Loué' && request.resource.data.tenantUid == resource.data.tenantUid
+          && request.resource.data.paymentStatus == 'En attente' && changed().hasOnly(['status','paymentStatus']))
+        || (resource.data.ownerUid == me() && resource.data.status == 'Loué'
+          && request.resource.data.paymentStatus == 'À jour' && changed().hasOnly(['paymentStatus']))
+        || (resource.data.ownerUid == me() && resource.data.status == 'Réservé' && clearsTenant()
+          && changed().hasOnly(tenantKeys()))
+        || (resource.data.ownerUid == me() && resource.data.status == 'Loué'
+          && resource.data.get('departureRequested', false) == true && clearsTenant()
+          && changed().hasOnly(tenantKeys()))
+        || (role() == 'tenant' && resource.data.status == 'Disponible'
+          && request.resource.data.status == 'Réservé'
+          && request.resource.data.tenantUid == me()
+          && request.resource.data.paymentStatus == null
+          && changed().hasOnly(tenantKeys()))
+        || (resource.data.get('tenantUid', null) == me()
+          && resource.data.status == 'Réservé'
+          && request.resource.data.status == 'Disponible'
+          && clearsTenant()
+          && changed().hasOnly(tenantKeys()))
+        || (resource.data.get('tenantUid', null) == me()
+          && resource.data.status == 'Loué'
+          && request.resource.data.get('departureRequested', false) == true
+          && changed().hasOnly(['departureRequested']))
+      );
+      allow delete: if signedIn() && resource.data.ownerUid == me() && resource.data.status == 'Disponible';
+
+      match /followers/{uid} {
+        function pairedUserFollowExists() {
+          return existsAfter(/databases/$(db)/documents/users/$(me())/followedApartments/$(id));
+        }
+        allow read: if signedIn() && me() == uid && role() == 'tenant';
+        allow create: if signedIn() && me() == uid && role() == 'tenant'
+          && request.resource.data.uid == uid
+          && request.resource.data.apartmentId == id
+          && request.resource.data.keys().hasOnly(['uid','apartmentId','ownerUid','title','createdAt'])
+          && get(apartmentPath(id)).data.status == 'Disponible'
+          && get(apartmentPath(id)).data.ownerUid == request.resource.data.ownerUid
+          && pairedUserFollowExists();
+        allow delete: if signedIn() && me() == uid && role() == 'tenant'
+          && !pairedUserFollowExists();
+        allow update: if false;
+      }
+    }
+
+    match /payments/{id} {
+      allow read: if signedIn() && (resource.data.ownerUid == me() || resource.data.tenantUid == me());
+      allow create: if signedIn() && request.resource.data.tenantUid == me()
+        && request.resource.data.status == 'En attente'
+        && request.resource.data.amount is number && request.resource.data.amount > 0
+        && request.resource.data.period is string && request.resource.data.period.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && request.resource.data.method in ['Mobile Money', 'Espèces', 'Banque']
+        && request.resource.data.keys().hasOnly(['aptId','aptTitle','ownerUid','tenantUid','tenantName','amount','period','method','reference','status','createdAt'])
+        && get(apartmentPath(request.resource.data.aptId)).data.get('tenantUid', null) == me()
+        && get(apartmentPath(request.resource.data.aptId)).data.status == 'Loué'
+        && get(apartmentPath(request.resource.data.aptId)).data.ownerUid == request.resource.data.ownerUid;
+      allow update: if signedIn() && resource.data.ownerUid == me() && resource.data.status == 'En attente'
+        && request.resource.data.status in ['Validé', 'Refusé']
+        && changed().hasOnly(['status','decidedAt','receiptNo','refusalReason']);
+      allow delete: if false;
+    }
+
+    match /chats/{cid} {
+      allow get: if signedIn() && (resource == null || me() in resource.data.participants);
+      allow list: if signedIn() && me() in resource.data.participants;
+      allow create: if signedIn() && me() in request.resource.data.participants
+        && request.resource.data.participants.size() == 2
+        && cid == request.resource.data.aptId + '_' + request.resource.data.tenantUid;
+      allow update: if signedIn() && me() in resource.data.participants
+        && changed().hasOnly(['lastMessage','lastAt','lastSender']);
+      allow delete: if false;
+      match /messages/{mid} {
+        allow read: if signedIn() && me() in get(/databases/$(db)/documents/chats/$(cid)).data.participants;
+        allow create: if signedIn()
+          && me() in get(/databases/$(db)/documents/chats/$(cid)).data.participants
+          && request.resource.data.senderUid == me()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 4000;
+        allow update, delete: if false;
+      }
+    }
+
     match /notifications/{nid} {
-      allow create: if request.auth != null && request.resource.data.fromUid == me();
-      allow read, delete: if request.auth != null && resource.data.toUid == me();
-      allow update: if request.auth != null && resource.data.toUid == me() && changed().hasOnly(['read']);
+      allow create: if false;
+      allow read, delete: if signedIn() && resource.data.toUid == me();
+      allow update: if signedIn() && resource.data.toUid == me()
+        && changed().hasOnly(['read'])
+        && request.resource.data.read == true;
     }
   }
 }

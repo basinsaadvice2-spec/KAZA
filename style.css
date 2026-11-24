@@ -54,6 +54,10 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .apartment-card-location { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--primary); }
 .apartment-card-title { font-size: 18px; font-weight: 700; margin-top: 6px; margin-bottom: 6px; }
 .apartment-card-address-detail { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
+.advertiser-details { display: flex; flex-direction: column; gap: 3px; margin: 12px 0; padding: 12px 14px; border-radius: 14px; background: var(--input-bg); border: 1px solid var(--border); }
+.advertiser-details strong { font-size: 13px; }
+.advertiser-details span { color: var(--text-muted); font-size: 11px; }
+.follow-button { margin: 12px 0 2px; }
 .kin-specs-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .kin-spec-tag { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 12px; background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border); }
 .apartment-card-pricing-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 14px; }
@@ -89,6 +93,7 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .btn-action-trigger.outline-btn { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border); }
 .btn-action-trigger.small-btn { padding: 7px 12px; font-size: 11px; }
 .action-context-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.owner-apartment-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .context-title { font-size: 16px; font-weight: 700; }
 
 /* Navigation inférieure */
@@ -134,3 +139,21 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .modal-box { background: var(--surface); width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; border-radius: 28px; padding: 28px; box-shadow: var(--shadow-md); }
 .modal-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+
+/* PWA, installation et états réseau */
+.network-status { position: fixed; inset: 0 0 auto; z-index: 40000; padding: 10px 16px; background: #7c2d12; color: #fff; text-align: center; font-size: 12px; font-weight: 700; }
+.network-status[hidden], .pwa-install-button[hidden], .pwa-update-button[hidden], .modal-overlay[hidden] { display: none !important; }
+.pwa-install-button, .pwa-update-button { position: fixed; right: max(14px, calc((100vw - 600px) / 2 + 14px)); z-index: 1500; border: 0; border-radius: 999px; padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 12px; font-weight: 800; cursor: pointer; }
+.pwa-install-button { bottom: 86px; display: inline-flex; align-items: center; gap: 8px; color: #fff; background: var(--primary-gradient); }
+.pwa-update-button { bottom: 142px; color: #fff; background: #1d4ed8; }
+.save-search-button { margin-top: 12px; white-space: normal; line-height: 1.5; }
+.pwa-help-steps { margin: 0; padding: 16px; }
+.pwa-help-steps strong { display: block; margin: 8px 0 4px; }
+.pwa-help-steps p { margin-bottom: 10px; line-height: 1.55; font-size: 13px; color: var(--text-muted); }
+.pwa-help-steps p:last-child { margin-bottom: 0; }
+
+@media (min-width: 768px) {
+  .network-status { left: 50%; right: auto; transform: translateX(-50%); width: min(100%, 760px); border-radius: 0 0 14px 14px; }
+  .pwa-install-button { bottom: 24px; }
+  .pwa-update-button { bottom: 80px; }
+}

@@ -2,7 +2,6 @@ import { state } from './state.js';
 import { $, esc, toast, onAction, requireRole } from './ui.js';
 import { addView } from './views.js';
 import { ensureChat, postMessage } from './chat-service.js';
-import { notify } from './notify.js';
 const recipients = () => state.apartments.filter(a => a.ownerUid === state.user.uid && a.status === 'Loué' && a.tenantUid);
 function render(box) {
   box.innerHTML = `<div class="surface-box"><h4>Diffusion aux locataires actifs</h4><p class="muted-text">Destinataires : ${recipients().length} locataire(s) actif(s).</p>
@@ -22,7 +21,6 @@ export default {
       for (const a of targets) {
         const c = await ensureChat(a, a.tenantUid, a.tenantName);
         await postMessage(c.id, `📢 Diffusion : ${text}`, 'system');
-        await notify(a.tenantUid, 'chat', 'Message du bailleur', text.slice(0, 80), { chatId: c.id });
       }
       $('broadcast-msg').value = ''; toast(`Message envoyé à ${targets.length} locataire(s).`, 'ok');
     });

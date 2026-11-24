@@ -1,0 +1,16 @@
+{
+  "name": "kaza-notifications",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "check": "node --check index.js && node --check criteria.js"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.1",
+    "firebase-functions": "^7.4.0"
+  }
+}

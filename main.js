@@ -11,9 +11,10 @@ import payments from './payments.js';
 import chat from './chat.js';
 import broadcast from './broadcast.js';
 import auth from './auth.js';
+import follow from './follow.js';
 
 // Chaque plugin est isolé : si l'un échoue, les autres continuent. L'authentification démarre en dernier.
-const plugins = [theme, data, catalog, booking, owner, publish, notifications, payments, chat, broadcast, auth];
+const plugins = [theme, data, catalog, follow, booking, owner, publish, notifications, payments, chat, broadcast, auth];
 window.__KAZA_PLUGINS__ = {};
 initActions();
 initNav();

@@ -16,6 +16,7 @@ const label = (r) => r === 'owner' ? 'Bailleur' : 'Locataire';
 function refreshTexts() {
   const reg = state.authMode === 'register', r = label(state.selectedRole);
   $('register-fields').style.display = reg ? 'block' : 'none';
+  $('owner-account-type-wrap').style.display = reg && state.selectedRole === 'owner' ? 'block' : 'none';
   $('auth-title').innerText = `${reg ? 'Inscription' : 'Connexion'} ${r}`;
   $('auth-subtitle').innerText = `Accès sécurisé (${r}).`;
   $('btn-auth-submit').innerText = reg ? 'Créer mon compte' : 'Continuer';
@@ -33,7 +34,14 @@ async function startSession(fbUser) {
     showScreen('scr-role-select');
     return toast(`Ce compte est un compte ${label(profile.role)}. Choisissez le bon espace.`, 'error');
   }
-  state.user = { ...profile, uid: fbUser.uid };
+  state.user = { ...profile, accountType: profile.accountType || (profile.role === 'owner' ? 'owner' : 'tenant'), uid: fbUser.uid };
+  await setDoc(doc(db, 'publicProfiles', fbUser.uid), {
+    uid: fbUser.uid,
+    name: state.user.name || '',
+    phone: state.user.phone || '',
+    role: state.user.role,
+    accountType: state.user.accountType
+  }, { merge: true }).catch((error) => console.warn('[KAZA] Profil public non synchronisé', error));
   bus.emit('session:start', state.user);
   showScreen(profile.role === 'owner' ? 'scr-owner-dashboard' : 'scr-tenant-dashboard');
 }
@@ -60,7 +68,8 @@ export default {
           registering = true;
           created = await createUserWithEmailAndPassword(auth, email, pass);
           const role = state.selectedRole || localStorage.getItem('kaza_intended_role') || 'tenant';
-          await setDoc(doc(db, 'users', created.user.uid), { uid: created.user.uid, email, name, phone, role });
+          const accountType = role === 'owner' ? $('auth-account-type').value : 'tenant';
+          await setDoc(doc(db, 'users', created.user.uid), { uid: created.user.uid, email, name, phone, role, accountType });
           registering = false;
           await startSession(created.user);
         } else {

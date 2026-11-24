@@ -4,6 +4,19 @@ export const ratesOf = (a) => a.rates || { month: a.price || 0 };
 export const ratesText = (a) => Object.entries(ratesOf(a)).filter(([, v]) => v > 0).map(([k, v]) => `${v} $ / ${RATE_LABELS[k] || k}`).join(' • ');
 export const photosOf = (a) => (a.photos && a.photos.length) ? a.photos : (a.photoUrl ? [a.photoUrl] : []);
 export const safeUrl = (u) => /^https?:\/\//i.test(u || '') ? u : '';
+export function advertiserOf(apartment, profile = null) {
+  const name = String(profile?.name || apartment.ownerName || '').trim();
+  return {
+    name: name || 'Nom non renseigné',
+    type: profile?.accountType === 'agency' || apartment.ownerType === 'agency' ? 'Agence immobilière' : 'Bailleur',
+    phone: profile?.phone || apartment.ownerPhone || ''
+  };
+}
+export function propertyNumberLabel(apartment) {
+  if (apartment.unitNumber) return `Appartement ${apartment.unitNumber}`;
+  if (apartment.propertyNumber) return `N° ${apartment.propertyNumber}`;
+  return '';
+}
 
 export function normalizePhone(raw) {
   let d = String(raw || '').trim();
@@ -32,7 +45,7 @@ export function matchesFilters(a, f) {
     const pool = f.rateType ? [rates[f.rateType]] : Object.values(rates);
     if (!pool.some(v => v > 0 && v <= f.maxPrice)) return false;
   }
-  if (f.q && !`${a.title} ${a.commune} ${a.reference} ${a.id}`.toLowerCase().includes(f.q)) return false;
+  if (f.q && !`${a.title} ${a.commune} ${a.reference} ${a.id} ${a.propertyNumber || ''} ${a.unitNumber || ''} ${a.buildingName || ''}`.toLowerCase().includes(f.q)) return false;
   return true;
 }
 

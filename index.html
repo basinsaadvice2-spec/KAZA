@@ -2,8 +2,15 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#6d28d9">
+    <meta name="description" content="KAZA relie bailleurs et locataires à Kinshasa.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="KAZA">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icons/kaza-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/kaza-192.png">
     <title>Kaza — L'immobilier à Kinshasa</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="variables.css">
@@ -49,6 +56,10 @@
                 <label>Téléphone WhatsApp</label>
                 <i class="fa-brands fa-whatsapp"></i>
                 <input type="tel" id="auth-phone" placeholder="Ex: +243810000000">
+            </div>
+            <div id="owner-account-type-wrap" class="form-input-container no-icon" style="display:none;">
+                <label for="auth-account-type">Type de compte</label>
+                <select id="auth-account-type"><option value="owner">Bailleur</option><option value="agency">Agence immobilière</option></select>
             </div>
         </div>
         <div class="form-input-container">
@@ -127,7 +138,9 @@
                 <span class="filter-tag" data-type="Appartement">Appartements</span>
                 <span class="filter-tag" data-type="Maison">Maisons</span>
                 <span class="filter-tag" data-type="Studio">Studios</span>
+                <span class="filter-tag" data-type="Parcelle">Parcelles</span>
             </div>
+            <button id="btn-save-search" class="btn-action-trigger tenant-btn save-search-button" type="button" data-action="save-search"><i class="fa-solid fa-bell"></i> M’avertir des nouvelles annonces correspondant à cette recherche</button>
         </div>
         <div id="tenant-dynamic-area"></div>
         <nav class="bottom-navigation-bar">
@@ -176,7 +189,7 @@
     <!-- MODALE PUBLICATION -->
     <div id="add-appart-modal" class="modal-overlay" style="display:none;">
         <div class="modal-box">
-            <h3>Publier un nouveau bien</h3>
+            <h3 id="publish-modal-title">Publier un nouveau bien</h3>
             <div class="form-input-container no-icon">
                 <label>Titre de l'annonce</label>
                 <input type="text" id="new-title" placeholder="Ex: Studio meublé climatisé">
@@ -184,13 +197,27 @@
             <div class="filter-grid-2">
                 <div class="form-input-container no-icon">
                     <label>Type de bien</label>
-                    <select id="new-type"><option value="Appartement">Appartement</option><option value="Maison">Maison</option><option value="Studio">Studio</option></select>
+                    <select id="new-type"><option value="Appartement">Appartement</option><option value="Maison">Maison</option><option value="Parcelle">Parcelle</option><option value="Studio">Studio</option></select>
                 </div>
                 <div class="form-input-container no-icon">
                     <label>Commune</label>
                     <select id="new-commune">
                         <option value="Gombe">Gombe</option><option value="Ngaliema">Ngaliema</option><option value="Limete">Limete</option><option value="Lingwala">Lingwala</option><option value="Kintambo">Kintambo</option><option value="Bandalungwa">Bandalungwa</option><option value="Kasa-Vubu">Kasa-Vubu</option><option value="Lemba">Lemba</option><option value="Matete">Matete</option><option value="Masina">Masina</option><option value="Ndjili">Ndjili</option><option value="Mont-Ngafula">Mont-Ngafula</option>
                     </select>
+                </div>
+            </div>
+            <div class="filter-grid-2">
+                <div id="property-number-wrap" class="form-input-container no-icon" style="display:none;">
+                    <label id="property-number-label" for="new-property-number">Numéro de maison / parcelle</label>
+                    <input type="text" id="new-property-number" maxlength="24" placeholder="Ex. 243 ou 24B" autocomplete="off">
+                </div>
+                <div id="unit-number-wrap" class="form-input-container no-icon" style="display:none;">
+                    <label for="new-unit-number">Numéro de l’appartement</label>
+                    <input type="text" id="new-unit-number" maxlength="24" placeholder="Ex. 01 ou B12" autocomplete="off">
+                </div>
+                <div id="building-name-wrap" class="form-input-container no-icon" style="display:none;">
+                    <label for="new-building-name">Immeuble ou complexe (facultatif)</label>
+                    <input type="text" id="new-building-name" maxlength="100" placeholder="Ex. Résidence Kasaï" autocomplete="off">
                 </div>
             </div>
             <div class="form-input-container no-icon">
@@ -252,6 +279,24 @@
         </div>
     </div>
 
+    <div id="network-status" class="network-status" role="status" aria-live="polite" hidden></div>
+    <button id="pwa-install-button" class="pwa-install-button" type="button" aria-label="Installer KAZA">
+        <i class="fa-solid fa-download" aria-hidden="true"></i><span>Installer KAZA</span>
+    </button>
+    <button id="pwa-update-button" class="pwa-update-button" type="button" hidden>Mettre KAZA à jour</button>
+    <div id="pwa-install-help" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-help-title" hidden>
+        <div class="modal-box">
+            <h3 id="pwa-help-title">Installer KAZA</h3>
+            <p class="muted-text">KAZA s’installe depuis le navigateur. Aucun fichier APK n’est téléchargé.</p>
+            <div class="surface-box pwa-help-steps">
+                <strong>Android</strong><p>Dans Chrome ou Edge, ouvrez le menu ⋮ puis choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».</p>
+                <strong>iPhone ou iPad</strong><p>Dans Safari, touchez Partager puis « Sur l’écran d’accueil ».</p>
+                <strong>Ordinateur</strong><p>Dans Chrome ou Edge, utilisez l’icône d’installation dans la barre d’adresse ou le menu du navigateur.</p>
+            </div>
+            <div class="modal-actions"><button id="pwa-help-close" class="btn-submit-form" type="button">Fermer</button></div>
+        </div>
+    </div>
+    <script type="module" src="pwa.js"></script>
     <script type="module" src="main.js"></script>
 </body>
 </html>
