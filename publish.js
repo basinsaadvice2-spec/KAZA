@@ -1,4 +1,4 @@
-import { db, storage, collection, doc, setDoc, updateDoc, serverTimestamp, ref, uploadBytes, getDownloadURL, deleteObject } from './firebase.js';
+import { db, storage, collection, doc, setDoc, updateDoc, serverTimestamp, ref, uploadBytesResumable, getDownloadURL, deleteObject } from './firebase.js';
 import { state } from './state.js';
 import { $, esc, toast, onAction, bindActions, closeModal, openModal, requireRole } from './ui.js';
 
@@ -13,6 +13,42 @@ let previewUrls = [];
 function revokePreviews() {
   previewUrls.forEach((url) => URL.revokeObjectURL(url));
   previewUrls = [];
+}
+
+async function optimizePhoto(file) {
+  if (typeof createImageBitmap !== 'function') return file;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+    const longestSide = Math.max(bitmap.width, bitmap.height);
+    if (longestSide <= 1600 && file.size <= 512 * 1024) return file;
+
+    const scale = Math.min(1, 1600 / longestSide);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82));
+    if (!blob || blob.type !== 'image/webp' || blob.size >= file.size) return file;
+
+    const name = file.name.replace(/\.[^.]+$/, '') || 'photo';
+    return new File([blob], `${name}.webp`, { type: 'image/webp', lastModified: file.lastModified });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close?.();
+  }
+}
+
+function uploadPhoto(storageRef, file, onProgress) {
+  const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+  return new Promise((resolve, reject) => {
+    task.on('state_changed', (snapshot) => {
+      onProgress(snapshot.bytesTransferred, snapshot.totalBytes);
+    }, reject, () => resolve(task.snapshot));
+  });
 }
 
 function setPublishFeedback(message = '', type = 'error') {
@@ -153,9 +189,9 @@ export default {
       const uploadedPaths = [];
       button.disabled = true;
       button.setAttribute('aria-busy', 'true');
-      button.textContent = editingId ? 'Enregistrement…' : 'Publication…';
+      button.textContent = editingId ? 'Mise à jour…' : 'Préparation…';
       cancelButton.disabled = true;
-      setPublishFeedback();
+      setPublishFeedback('Vérification des informations…', 'info');
       try {
         const title = $('new-title').value.trim();
         const avenue = $('new-ref').value.trim();
@@ -174,16 +210,48 @@ export default {
         if (editingId && (!previous || previous.ownerUid !== state.user.uid)) throw new Error('Annonce introuvable ou accès refusé.');
         const photos = state.selectedExistingPhotos.map((photo) => photo.url);
         const photoPaths = state.selectedExistingPhotos.map((photo) => photo.path);
-        for (let index = 0; index < state.selectedFiles.length; index++) {
-          const file = state.selectedFiles[index];
-          const path = `apartments/${state.user.uid}/${crypto.randomUUID()}_${index}_${file.name.replace(/[^\w.-]/g, '_')}`;
-          const storageRef = ref(storage, path);
-          await uploadBytes(storageRef, file, { contentType: file.type });
-          uploadedPaths.push(path);
-          photos.push(await getDownloadURL(storageRef));
-          photoPaths.push(path);
+        if (state.selectedFiles.length) {
+          const fileCount = state.selectedFiles.length;
+          button.textContent = `Optimisation de ${fileCount} photo${fileCount > 1 ? 's' : ''}…`;
+          setPublishFeedback('Réduction des images pour accélérer leur envoi…', 'info');
+          const optimizedFiles = await Promise.all(state.selectedFiles.map(optimizePhoto));
+          button.textContent = `Envoi de ${fileCount} photo${fileCount > 1 ? 's' : ''}…`;
+          setPublishFeedback(`Envoi de ${fileCount} photo${fileCount > 1 ? 's' : ''} vers le stockage…`, 'info');
+          const transferredByPhoto = optimizedFiles.map(() => 0);
+          const totalBytes = optimizedFiles.reduce((sum, file) => sum + file.size, 0);
+          let lastDisplayedPercent = -1;
+          let lastAnnouncedPercent = 0;
+          const uploadResults = await Promise.allSettled(optimizedFiles.map(async (file, index) => {
+            const path = `apartments/${state.user.uid}/${crypto.randomUUID()}_${index}_${file.name.replace(/[^\w.-]/g, '_')}`;
+            const storageRef = ref(storage, path);
+            const snapshot = await uploadPhoto(storageRef, file, (transferred) => {
+              transferredByPhoto[index] = transferred;
+              const uploaded = transferredByPhoto.reduce((sum, value) => sum + value, 0);
+              const percentage = totalBytes ? Math.min(100, Math.round(uploaded / totalBytes * 100)) : 100;
+              if (percentage !== lastDisplayedPercent) {
+                button.textContent = `Envoi des photos… ${percentage}%`;
+                lastDisplayedPercent = percentage;
+              }
+              if (percentage === 100 || percentage - lastAnnouncedPercent >= 10) {
+                setPublishFeedback(`Envoi des photos… ${percentage} % terminé`, 'info');
+                lastAnnouncedPercent = percentage;
+              }
+            });
+            uploadedPaths.push(path);
+            return { url: await getDownloadURL(snapshot.ref), path };
+          }));
+          const failedUpload = uploadResults.find((result) => result.status === 'rejected');
+          if (failedUpload) throw failedUpload.reason;
+          uploadResults.forEach((result) => {
+            if (result.status === 'fulfilled') {
+              photos.push(result.value.url);
+              photoPaths.push(result.value.path);
+            }
+          });
         }
 
+        button.textContent = 'Enregistrement…';
+        setPublishFeedback('Enregistrement de l’annonce…', 'info');
         const id = editingId || doc(collection(db, 'apartments')).id;
         const payload = {
           id,

@@ -50,6 +50,9 @@ export default {
   name: 'auth',
   async init() {
     bindActions({ '.role-interactive-card': 'select-role', '#btn-back-role': 'back-role', '#btn-auth-submit': 'auth-submit', '#auth-toggle-link': 'auth-toggle', '.btn-logout': 'logout' });
+    document.querySelectorAll('.role-interactive-card').forEach((card) => card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); card.click(); }
+    }));
 
     onAction('select-role', (el) => { state.selectedRole = el.dataset.role; localStorage.setItem('kaza_intended_role', state.selectedRole); state.authMode = 'login'; refreshTexts(); showScreen('scr-auth'); });
     onAction('back-role', () => showScreen('scr-role-select'));

@@ -23,12 +23,12 @@
         <div class="role-selection-layout">
             <div class="app-brand-logo">Kaza</div>
             <p class="app-brand-tagline">L'immobilier simple et sécurisé à Kinshasa</p>
-            <div class="role-interactive-card" data-role="tenant">
+            <div class="role-interactive-card" role="button" tabindex="0" data-role="tenant">
                 <div class="role-card-icon tenant"><i class="fa-solid fa-magnifying-glass"></i></div>
                 <h3>Espace Locataire</h3>
                 <p>Trouvez votre logement par commune, budget flexible (heure, jour, mois), SNEL et eau.</p>
             </div>
-            <div class="role-interactive-card" data-role="owner">
+            <div class="role-interactive-card" role="button" tabindex="0" data-role="owner">
                 <div class="role-card-icon owner"><i class="fa-solid fa-key"></i></div>
                 <h3>Espace Bailleur</h3>
                 <p>Publiez vos biens avec vos propres tarifs flexibles, suivez vos revenus et validez les paiements.</p>
@@ -137,19 +137,19 @@
                 </div>
             </div>
             <div class="filter-tags-scroll">
-                <span class="filter-tag active" data-type="">Tous</span>
-                <span class="filter-tag" data-type="Appartement">Appartements</span>
-                <span class="filter-tag" data-type="Maison">Maisons</span>
-                <span class="filter-tag" data-type="Studio">Studios</span>
-                <span class="filter-tag" data-type="Parcelle">Parcelles</span>
+                <button type="button" class="filter-tag active" data-type="">Tous</button>
+                <button type="button" class="filter-tag" data-type="Appartement">Appartements</button>
+                <button type="button" class="filter-tag" data-type="Maison">Maisons</button>
+                <button type="button" class="filter-tag" data-type="Studio">Studios</button>
+                <button type="button" class="filter-tag" data-type="Parcelle">Parcelles</button>
             </div>
             <button id="btn-save-search" class="btn-action-trigger tenant-btn save-search-button" type="button" data-action="save-search"><i class="fa-solid fa-bell"></i> M’avertir des nouvelles annonces correspondant à cette recherche</button>
         </div>
         <div id="tenant-dynamic-area"></div>
         <nav class="bottom-navigation-bar">
-            <div class="tab-navigation-item active" data-tab="catalog"><i class="fa-solid fa-compass"></i><span>Explorer</span></div>
-            <div class="tab-navigation-item" data-tab="my-rental"><i class="fa-solid fa-house-user"></i><span>Mon Logement</span></div>
-            <div class="tab-navigation-item" data-tab="tenant-chats"><i class="fa-solid fa-comment-dots"></i><span>Messages</span></div>
+            <button type="button" class="tab-navigation-item active" data-tab="catalog"><i class="fa-solid fa-compass"></i><span>Explorer</span></button>
+            <button type="button" class="tab-navigation-item" data-tab="my-rental"><i class="fa-solid fa-house-user"></i><span>Mon Logement</span></button>
+            <button type="button" class="tab-navigation-item" data-tab="tenant-chats"><i class="fa-solid fa-comment-dots"></i><span>Messages</span></button>
         </nav>
     </section>
 
@@ -167,16 +167,16 @@
         </div>
         <div id="owner-dynamic-area"></div>
         <nav class="bottom-navigation-bar">
-            <div class="tab-navigation-item active" data-tab="owner-apparts"><i class="fa-solid fa-building"></i><span>Mes Biens</span></div>
-            <div class="tab-navigation-item" data-tab="owner-broadcast"><i class="fa-solid fa-bullhorn"></i><span>Diffusion</span></div>
-            <div class="tab-navigation-item" data-tab="owner-chats"><i class="fa-solid fa-comment-dots"></i><span>Messages</span></div>
+            <button type="button" class="tab-navigation-item active" data-tab="owner-apparts"><i class="fa-solid fa-building"></i><span>Mes Biens</span></button>
+            <button type="button" class="tab-navigation-item" data-tab="owner-broadcast"><i class="fa-solid fa-bullhorn"></i><span>Diffusion</span></button>
+            <button type="button" class="tab-navigation-item" data-tab="owner-chats"><i class="fa-solid fa-comment-dots"></i><span>Messages</span></button>
         </nav>
     </section>
 
     <!-- ÉCRAN 5 : CHAT -->
     <section id="scr-chat-room" class="screen-view">
         <div class="chat-header-bar">
-            <button class="circle-action-btn" id="btn-close-chat"><i class="fa-solid fa-arrow-left"></i></button>
+            <button type="button" class="circle-action-btn" id="btn-close-chat"><i class="fa-solid fa-arrow-left"></i></button>
             <div>
                 <div class="chat-room-title" id="chat-room-title">Discussion</div>
                 <div class="chat-room-subtitle" id="chat-room-subtitle"></div>
@@ -185,7 +185,7 @@
         <div id="chat-messages-container" class="chat-messages-scrollarea"></div>
         <div class="chat-input-row">
             <input type="text" id="chat-input-field" placeholder="Écrire un message...">
-            <button id="btn-send-message" class="btn-send-message"><i class="fa-solid fa-paper-plane"></i></button>
+            <button type="button" id="btn-send-message" class="btn-send-message"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </section>
 
@@ -256,12 +256,12 @@
             </div>
             <div class="form-input-container no-icon">
                 <label>Photos obligatoires (<span id="photo-counter">0</span>/4 max)</label>
-                <div class="photo-upload-zone" id="photo-drop-zone">
-                    <div class="upload-icon-circle"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <button type="button" class="photo-upload-zone" id="photo-drop-zone" aria-label="Choisir des photos pour l’annonce">
+                    <span class="upload-icon-circle" aria-hidden="true"><i class="fa-solid fa-cloud-arrow-up"></i></span>
                     <span>Ajouter jusqu'à 4 photos</span>
-                    <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
-                </div>
-                <p class="photo-upload-note">Ajoutez au moins une photo. Leur envoi nécessite que Firebase Storage soit activé sur le projet.</p>
+                </button>
+                <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                <p class="photo-upload-note">KAZA réduit automatiquement le poids des images. Firebase Storage doit être activé pour publier.</p>
                 <div id="photo-preview-container" class="photo-preview-grid"></div>
             </div>
             <p id="publish-feedback" class="publish-feedback" role="status" aria-live="polite" hidden></p>

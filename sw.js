@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kaza-shell-v4';
+const CACHE_NAME = 'kaza-shell-v5';
 const APP_SHELL = [
   '/', '/index.html', '/manifest.webmanifest', '/variables.css', '/style.css',
   '/main.js', '/firebase.js', '/state.js', '/bus.js', '/ui.js', '/views.js',
