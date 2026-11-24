@@ -255,15 +255,16 @@
                 <div class="form-input-container no-icon"><label>Google Maps</label><input type="url" id="new-maps" placeholder="https://maps.google.com/..."></div>
             </div>
             <div class="form-input-container no-icon">
-                <label>Photos facultatives (<span id="photo-counter">0</span>/4 max)</label>
+                <label>Photos obligatoires (<span id="photo-counter">0</span>/4 max)</label>
                 <div class="photo-upload-zone" id="photo-drop-zone">
                     <div class="upload-icon-circle"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                     <span>Ajouter jusqu'à 4 photos</span>
                     <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
                 </div>
-                <p class="photo-upload-note">Vous pouvez publier sans photo. L’envoi des images nécessite que Firebase Storage soit activé sur le projet.</p>
+                <p class="photo-upload-note">Ajoutez au moins une photo. Leur envoi nécessite que Firebase Storage soit activé sur le projet.</p>
                 <div id="photo-preview-container" class="photo-preview-grid"></div>
             </div>
+            <p id="publish-feedback" class="publish-feedback" role="status" aria-live="polite" hidden></p>
             <div class="modal-actions">
                 <button id="btn-cancel-add" class="btn-submit-form" type="button" style="background:var(--text-muted);">Annuler</button>
                 <button id="btn-save-appart" class="btn-submit-form owner-theme" type="button">Publier</button>

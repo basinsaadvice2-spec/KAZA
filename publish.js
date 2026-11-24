@@ -15,6 +15,13 @@ function revokePreviews() {
   previewUrls = [];
 }
 
+function setPublishFeedback(message = '', type = 'error') {
+  const feedback = $('publish-feedback');
+  feedback.textContent = message;
+  feedback.dataset.state = type;
+  feedback.hidden = !message;
+}
+
 function updatePropertyFields() {
   const type = $('new-type').value;
   const isUnit = type === 'Appartement' || type === 'Studio';
@@ -47,6 +54,7 @@ function emptyForm() {
   state.selectedFiles = [];
   state.selectedExistingPhotos = [];
   state.editingApartmentId = null;
+  setPublishFeedback();
   $('publish-modal-title').innerText = 'Publier un nouveau bien';
   $('btn-save-appart').innerText = 'Publier';
   updatePropertyFields();
@@ -99,7 +107,7 @@ function selectedPhotos() {
 function friendlyPublishError(error) {
   const code = String(error?.code || '');
   if (code.startsWith('storage/')) {
-    return new Error('Firebase Storage ne peut pas enregistrer les photos actuellement. Retirez les photos sélectionnées et publiez sans image, ou activez le stockage Firebase.', { cause: error });
+    return new Error('L’envoi de la photo a échoué dans Firebase Storage. Vérifiez que le stockage et son forfait sont activés, ainsi que les règles du bucket.', { cause: error });
   }
   if (code === 'permission-denied') {
     return new Error('Firebase a refusé cette publication. Vérifiez que ce compte a bien le rôle Bailleur et que les règles Firestore sont à jour.', { cause: error });
@@ -147,6 +155,7 @@ export default {
       button.setAttribute('aria-busy', 'true');
       button.textContent = editingId ? 'Enregistrement…' : 'Publication…';
       cancelButton.disabled = true;
+      setPublishFeedback();
       try {
         const title = $('new-title').value.trim();
         const avenue = $('new-ref').value.trim();
@@ -158,6 +167,7 @@ export default {
         }));
         if (!title || !avenue) throw new Error('Remplissez le titre et l’avenue.');
         if (!Object.values(rates).some((value) => value > 0)) throw new Error('Renseignez au moins un tarif positif.');
+        if (!state.selectedFiles.length && !state.selectedExistingPhotos.length) throw new Error('Ajoutez au moins une photo pour publier cette annonce.');
         if (!navigator.onLine) throw new Error('La publication nécessite une connexion Internet. Réessayez lorsque vous serez en ligne.');
 
         const previous = editingId ? state.apartments.find((item) => item.id === editingId) : null;
@@ -191,7 +201,7 @@ export default {
           water: $('new-water').value,
           mapsUrl: $('new-maps').value.trim(),
           photos,
-          photoUrl: photos[0] || '',
+          photoUrl: photos[0],
           photoPaths,
           ownerUid: state.user.uid,
           ownerEmail: state.user.email,
@@ -212,7 +222,9 @@ export default {
         toast(editingId ? 'Annonce mise à jour.' : 'Annonce publiée.', 'ok');
       } catch (error) {
         await Promise.allSettled(uploadedPaths.map((path) => deleteObject(ref(storage, path))));
-        throw friendlyPublishError(error);
+        const visibleError = friendlyPublishError(error);
+        console.error('[KAZA] Publication impossible', visibleError);
+        setPublishFeedback(visibleError.message);
       } finally {
         button.disabled = false;
         button.removeAttribute('aria-busy');

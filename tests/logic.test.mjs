@@ -72,7 +72,7 @@ test('static HTML has unique IDs and loads the standalone PWA bootstrap', () => 
   assert.match(html, /<script type="module" src="pwa\.js"><\/script>\s*<script type="module" src="main\.js"><\/script>/);
 });
 
-test('install action is grouped with role choices and publish supports the current Storage setup', () => {
+test('install action is grouped with role choices and publish reports errors while requiring photos', () => {
   const html = readFileSync(join(root, 'index.html'), 'utf8');
   const roleScreen = html.split('id="scr-role-select"')[1].split('</section>')[0];
   const publish = readFileSync(join(root, 'publish.js'), 'utf8');
@@ -81,6 +81,8 @@ test('install action is grouped with role choices and publish supports the curre
   assert.equal((html.match(/id="pwa-install-button"/g) || []).length, 1);
   assert.ok(roleScreen.indexOf('Espace Bailleur') < roleScreen.indexOf('id="pwa-install-button"'));
   assert.match(styles, /\.form-input-container\.no-label\s*>\s*i\s*\{\s*top:\s*50%;/);
-  assert.match(publish, /photoUrl:\s*photos\[0\]\s*\|\|\s*''/);
-  assert.doesNotMatch(publish, /Ajoutez au moins une photo/);
+  assert.match(publish, /Ajoutez au moins une photo pour publier/);
+  assert.match(publish, /setPublishFeedback\(visibleError\.message\)/);
+  assert.match(publish, /photoUrl:\s*photos\[0\]/);
+  assert.match(html, /Photos obligatoires/);
 });
