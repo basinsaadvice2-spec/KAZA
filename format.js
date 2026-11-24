@@ -34,6 +34,7 @@ export const inquiryMessage = (a) => `Bonjour ${a.ownerName || ''}, je suis int�
 
 export function matchesFilters(a, f) {
   if (a.status !== 'Disponible') return false;
+  const query = String(f.q || '').trim().toLowerCase();
   if (f.commune && a.commune !== f.commune) return false;
   if (f.type && a.type !== f.type) return false;
   const legacy = { 'Groupe électrogène': 'Groupe/Solaire', 'Solaire': 'Groupe/Solaire', 'Forage': 'Forage/Citerne', 'Citerne': 'Forage/Citerne' };
@@ -45,7 +46,7 @@ export function matchesFilters(a, f) {
     const pool = f.rateType ? [rates[f.rateType]] : Object.values(rates);
     if (!pool.some(v => v > 0 && v <= f.maxPrice)) return false;
   }
-  if (f.q && !`${a.title} ${a.commune} ${a.reference} ${a.id} ${a.propertyNumber || ''} ${a.unitNumber || ''} ${a.buildingName || ''}`.toLowerCase().includes(f.q)) return false;
+  if (query && !`${a.title} ${a.commune} ${a.reference} ${a.id} ${a.propertyNumber || ''} ${a.unitNumber || ''} ${a.buildingName || ''}`.toLowerCase().includes(query)) return false;
   return true;
 }
 

@@ -28,6 +28,9 @@ test('search matches the unit number and respects every active filter', () => {
     snel: 'Solaire', water: 'Forage', type: 'Appartement'
   };
   assert.equal(matchesFilters(availableApartment, filters), true);
+  assert.equal(matchesFilters(availableApartment, { q: 'AVENUE DES CLINIQUES' }), true);
+  assert.equal(matchesFilters(availableApartment, { q: 'résidence kasaï' }), true);
+  assert.equal(matchesFilters(availableApartment, { q: 'adresse inconnue' }), false);
   assert.equal(matchesFilters(availableApartment, { ...filters, maxPrice: 300 }), false);
   assert.equal(matchesFilters({ ...availableApartment, status: 'Loué' }, filters), false);
 });
@@ -67,4 +70,17 @@ test('static HTML has unique IDs and loads the standalone PWA bootstrap', () => 
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(ids.length, new Set(ids).size, 'HTML IDs should be unique');
   assert.match(html, /<script type="module" src="pwa\.js"><\/script>\s*<script type="module" src="main\.js"><\/script>/);
+});
+
+test('install action is grouped with role choices and publish supports the current Storage setup', () => {
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const roleScreen = html.split('id="scr-role-select"')[1].split('</section>')[0];
+  const publish = readFileSync(join(root, 'publish.js'), 'utf8');
+  const styles = readFileSync(join(root, 'style.css'), 'utf8');
+
+  assert.equal((html.match(/id="pwa-install-button"/g) || []).length, 1);
+  assert.ok(roleScreen.indexOf('Espace Bailleur') < roleScreen.indexOf('id="pwa-install-button"'));
+  assert.match(styles, /\.form-input-container\.no-label\s*>\s*i\s*\{\s*top:\s*50%;/);
+  assert.match(publish, /photoUrl:\s*photos\[0\]\s*\|\|\s*''/);
+  assert.doesNotMatch(publish, /Ajoutez au moins une photo/);
 });

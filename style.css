@@ -82,9 +82,11 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .form-input-container label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
 .form-input-container i { position: absolute; left: 16px; top: 39px; color: var(--text-muted); font-size: 14px; }
 .form-input-container.no-icon i { top: 15px; }
+.form-input-container.no-label > i { top: 50%; transform: translateY(-50%); }
 .form-input-container input, .form-input-container select, .form-input-container textarea { width: 100%; padding: 14px 16px 14px 44px; border-radius: 14px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-size: 13px; font-weight: 500; outline: none; }
 .form-input-container.no-icon input, .form-input-container.no-icon select, .form-input-container textarea { padding-left: 14px; }
 .btn-submit-form { width: 100%; padding: 16px; border-radius: 16px; border: none; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; box-shadow: var(--shadow-sm); }
+.btn-submit-form:disabled { opacity: .72; cursor: wait; }
 .btn-submit-form.owner-theme { background: var(--primary-gradient); }
 .btn-submit-form.tenant-theme { background: var(--secondary-gradient); }
 .btn-action-trigger { background: var(--primary-gradient); border: none; border-radius: 14px; color: #fff; padding: 10px 16px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
@@ -139,13 +141,15 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .modal-box { background: var(--surface); width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; border-radius: 28px; padding: 28px; box-shadow: var(--shadow-md); }
 .modal-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+.photo-upload-note { margin-top: 9px; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 
 /* PWA, installation et états réseau */
 .network-status { position: fixed; inset: 0 0 auto; z-index: 40000; padding: 10px 16px; background: #7c2d12; color: #fff; text-align: center; font-size: 12px; font-weight: 700; }
 .network-status[hidden], .pwa-install-button[hidden], .pwa-update-button[hidden], .modal-overlay[hidden] { display: none !important; }
-.pwa-install-button, .pwa-update-button { position: fixed; right: max(14px, calc((100vw - 600px) / 2 + 14px)); z-index: 1500; border: 0; border-radius: 999px; padding: 12px 16px; box-shadow: var(--shadow-md); font-size: 12px; font-weight: 800; cursor: pointer; }
-.pwa-install-button { bottom: 86px; display: inline-flex; align-items: center; gap: 8px; color: #fff; background: var(--primary-gradient); }
-.pwa-update-button { bottom: 142px; color: #fff; background: #1d4ed8; }
+.pwa-install-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 10px; margin-top: 2px; padding: 15px 18px; border: 0; border-radius: 16px; box-shadow: var(--shadow-md); color: #fff; background: var(--primary-gradient); font-size: 14px; font-weight: 800; cursor: pointer; }
+.pwa-install-button:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.pwa-install-button:focus-visible { outline: 3px solid rgba(109, 40, 217, .35); outline-offset: 3px; }
+.pwa-update-button { position: fixed; right: max(14px, calc((100vw - 600px) / 2 + 14px)); bottom: 142px; z-index: 1500; border: 0; border-radius: 999px; padding: 12px 16px; box-shadow: var(--shadow-md); color: #fff; background: #1d4ed8; font-size: 12px; font-weight: 800; cursor: pointer; }
 .save-search-button { margin-top: 12px; white-space: normal; line-height: 1.5; }
 .pwa-help-steps { margin: 0; padding: 16px; }
 .pwa-help-steps strong { display: block; margin: 8px 0 4px; }
@@ -154,6 +158,5 @@ body { background: var(--background); color: var(--text-main); transition: backg
 
 @media (min-width: 768px) {
   .network-status { left: 50%; right: auto; transform: translateX(-50%); width: min(100%, 760px); border-radius: 0 0 14px 14px; }
-  .pwa-install-button { bottom: 24px; }
   .pwa-update-button { bottom: 80px; }
 }

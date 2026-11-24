@@ -33,6 +33,9 @@
                 <h3>Espace Bailleur</h3>
                 <p>Publiez vos biens avec vos propres tarifs flexibles, suivez vos revenus et validez les paiements.</p>
             </div>
+            <button id="pwa-install-button" class="pwa-install-button" type="button" aria-label="Installer KAZA">
+                <i class="fa-solid fa-download" aria-hidden="true"></i><span>Installer KAZA</span>
+            </button>
         </div>
     </section>
 
@@ -252,17 +255,18 @@
                 <div class="form-input-container no-icon"><label>Google Maps</label><input type="url" id="new-maps" placeholder="https://maps.google.com/..."></div>
             </div>
             <div class="form-input-container no-icon">
-                <label>Photos (<span id="photo-counter">0</span>/4 max)</label>
+                <label>Photos facultatives (<span id="photo-counter">0</span>/4 max)</label>
                 <div class="photo-upload-zone" id="photo-drop-zone">
                     <div class="upload-icon-circle"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                     <span>Ajouter jusqu'à 4 photos</span>
                     <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
                 </div>
+                <p class="photo-upload-note">Vous pouvez publier sans photo. L’envoi des images nécessite que Firebase Storage soit activé sur le projet.</p>
                 <div id="photo-preview-container" class="photo-preview-grid"></div>
             </div>
             <div class="modal-actions">
-                <button id="btn-cancel-add" class="btn-submit-form" style="background:var(--text-muted);">Annuler</button>
-                <button id="btn-save-appart" class="btn-submit-form owner-theme">Publier</button>
+                <button id="btn-cancel-add" class="btn-submit-form" type="button" style="background:var(--text-muted);">Annuler</button>
+                <button id="btn-save-appart" class="btn-submit-form owner-theme" type="button">Publier</button>
             </div>
         </div>
     </div>
@@ -280,9 +284,6 @@
     </div>
 
     <div id="network-status" class="network-status" role="status" aria-live="polite" hidden></div>
-    <button id="pwa-install-button" class="pwa-install-button" type="button" aria-label="Installer KAZA">
-        <i class="fa-solid fa-download" aria-hidden="true"></i><span>Installer KAZA</span>
-    </button>
     <button id="pwa-update-button" class="pwa-update-button" type="button" hidden>Mettre KAZA à jour</button>
     <div id="pwa-install-help" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-help-title" hidden>
         <div class="modal-box">

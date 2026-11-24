@@ -96,6 +96,17 @@ function selectedPhotos() {
   };
 }
 
+function friendlyPublishError(error) {
+  const code = String(error?.code || '');
+  if (code.startsWith('storage/')) {
+    return new Error('Firebase Storage ne peut pas enregistrer les photos actuellement. Retirez les photos sélectionnées et publiez sans image, ou activez le stockage Firebase.', { cause: error });
+  }
+  if (code === 'permission-denied') {
+    return new Error('Firebase a refusé cette publication. Vérifiez que ce compte a bien le rôle Bailleur et que les règles Firestore sont à jour.', { cause: error });
+  }
+  return error;
+}
+
 export default {
   name: 'publish',
   init() {
@@ -126,36 +137,41 @@ export default {
     onAction('remove-existing-photo', (el) => { state.selectedExistingPhotos.splice(Number(el.dataset.idx), 1); previews(); });
     onAction('publish-cancel', () => { closeModal('add-appart-modal'); emptyForm(); });
 
-    onAction('publish-save', async () => {
+    onAction('publish-save', async (button) => {
       requireRole('owner');
-      const title = $('new-title').value.trim();
-      const avenue = $('new-ref').value.trim();
-      const landmark = $('new-landmark').value.trim();
-      const reference = [avenue, landmark].filter(Boolean).join(' — ');
-      const rates = Object.fromEntries(['hour', 'day', 'week', 'month'].map((key) => {
-        const value = Number($(`price-${key}`).value);
-        return [key, Number.isFinite(value) && value > 0 ? value : 0];
-      }));
-      if (!title || !avenue) throw new Error('Remplissez le titre et l’avenue.');
-      if (!Object.values(rates).some((value) => value > 0)) throw new Error('Renseignez au moins un tarif positif.');
-      if (!state.selectedFiles.length && !state.selectedExistingPhotos.length) throw new Error('Ajoutez au moins une photo.');
-      if (!navigator.onLine) throw new Error('La publication nécessite une connexion Internet. Réessayez lorsque vous serez en ligne.');
-
       const editingId = state.editingApartmentId;
-      const previous = editingId ? state.apartments.find((item) => item.id === editingId) : null;
-      if (editingId && (!previous || previous.ownerUid !== state.user.uid)) throw new Error('Annonce introuvable ou accès refusé.');
-      const photos = state.selectedExistingPhotos.map((photo) => photo.url);
-      const photoPaths = state.selectedExistingPhotos.map((photo) => photo.path);
+      const idleLabel = editingId ? 'Enregistrer les modifications' : 'Publier';
+      const cancelButton = $('btn-cancel-add');
       const uploadedPaths = [];
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      button.textContent = editingId ? 'Enregistrement…' : 'Publication…';
+      cancelButton.disabled = true;
       try {
+        const title = $('new-title').value.trim();
+        const avenue = $('new-ref').value.trim();
+        const landmark = $('new-landmark').value.trim();
+        const reference = [avenue, landmark].filter(Boolean).join(' — ');
+        const rates = Object.fromEntries(['hour', 'day', 'week', 'month'].map((key) => {
+          const value = Number($(`price-${key}`).value);
+          return [key, Number.isFinite(value) && value > 0 ? value : 0];
+        }));
+        if (!title || !avenue) throw new Error('Remplissez le titre et l’avenue.');
+        if (!Object.values(rates).some((value) => value > 0)) throw new Error('Renseignez au moins un tarif positif.');
+        if (!navigator.onLine) throw new Error('La publication nécessite une connexion Internet. Réessayez lorsque vous serez en ligne.');
+
+        const previous = editingId ? state.apartments.find((item) => item.id === editingId) : null;
+        if (editingId && (!previous || previous.ownerUid !== state.user.uid)) throw new Error('Annonce introuvable ou accès refusé.');
+        const photos = state.selectedExistingPhotos.map((photo) => photo.url);
+        const photoPaths = state.selectedExistingPhotos.map((photo) => photo.path);
         for (let index = 0; index < state.selectedFiles.length; index++) {
           const file = state.selectedFiles[index];
           const path = `apartments/${state.user.uid}/${crypto.randomUUID()}_${index}_${file.name.replace(/[^\w.-]/g, '_')}`;
           const storageRef = ref(storage, path);
           await uploadBytes(storageRef, file, { contentType: file.type });
+          uploadedPaths.push(path);
           photos.push(await getDownloadURL(storageRef));
           photoPaths.push(path);
-          uploadedPaths.push(path);
         }
 
         const id = editingId || doc(collection(db, 'apartments')).id;
@@ -175,7 +191,7 @@ export default {
           water: $('new-water').value,
           mapsUrl: $('new-maps').value.trim(),
           photos,
-          photoUrl: photos[0],
+          photoUrl: photos[0] || '',
           photoPaths,
           ownerUid: state.user.uid,
           ownerEmail: state.user.email,
@@ -187,17 +203,22 @@ export default {
         };
         if (editingId) await updateDoc(doc(db, 'apartments', editingId), payload);
         else await setDoc(doc(db, 'apartments', id), payload);
+
+        const keptPaths = new Set(photoPaths.filter(Boolean));
+        const removedPaths = (previous?.photoPaths || []).filter((path) => path && !keptPaths.has(path));
+        await Promise.allSettled(removedPaths.map((path) => deleteObject(ref(storage, path))));
+        closeModal('add-appart-modal');
+        emptyForm();
+        toast(editingId ? 'Annonce mise à jour.' : 'Annonce publiée.', 'ok');
       } catch (error) {
         await Promise.allSettled(uploadedPaths.map((path) => deleteObject(ref(storage, path))));
-        throw error;
+        throw friendlyPublishError(error);
+      } finally {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        button.textContent = state.editingApartmentId ? 'Enregistrer les modifications' : idleLabel;
+        cancelButton.disabled = false;
       }
-
-      const keptPaths = new Set(photoPaths.filter(Boolean));
-      const removedPaths = (previous?.photoPaths || []).filter((path) => path && !keptPaths.has(path));
-      await Promise.allSettled(removedPaths.map((path) => deleteObject(ref(storage, path))));
-      closeModal('add-appart-modal');
-      emptyForm();
-      toast(editingId ? 'Annonce mise à jour.' : 'Annonce publiée.', 'ok');
     });
   }
 };
