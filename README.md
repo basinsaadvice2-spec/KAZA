@@ -27,7 +27,7 @@ Les fonctions Cloud s'exécutent avec l'identité de service Firebase. Pour dép
 firebase deploy --only firestore:rules,firestore:indexes,storage,functions
 ```
 
-Pour activer le push Web, ajoutez la **clé publique Web Push (VAPID)** générée dans les paramètres Cloud Messaging du projet dans `push-config.js`. Elle est publique par conception. Ne placez jamais de clé privée VAPID, de clé Admin ou de compte de service dans le JavaScript client. Sans clé VAPID et sans déploiement des fonctions/règles, le centre dans l'application reste disponible après mise à jour Firebase, mais les push ne sont pas actifs.
+Pour activer le push Web, ajoutez la **clé publique Web Push (VAPID)** générée dans les paramètres Cloud Messaging du projet dans `push-config.js`. Elle est publique par conception. Ne placez jamais de clé privée VAPID, de clé Admin ou de compte de service dans le JavaScript client. Le centre est intégré à l'interface, mais les nouvelles notifications d'événement nécessitent que les fonctions et les règles Firebase soient déployées. Les push nécessitent en plus la clé VAPID.
 
 Les fonctions utilisent Node.js 22. Installation locale et vérification :
 

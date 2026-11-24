@@ -6,6 +6,7 @@
 - Branche de référence au début du travail : `main`, commit `578465e34e6784877ffa4e2b73acda0e44fa28e4`.
 - Sauvegarde récupérable créée avant modification : branche `backup/pre-mission-2026-11-24` et bundle Git local.
 - Le site Vercel `kaza-sigma.vercel.app` a été ouvert en lecture seule. Il affichait l'écran initial KAZA; son commit de déploiement et ses parcours authentifiés n'ont pas pu être vérifiés depuis le navigateur utilisé.
+- Après l'intégration, Vercel a affiché le bouton PWA « Installer KAZA ». Les parcours authentifiés n'ont pas été soumis et le déploiement Firebase n'a pas été exécuté depuis cet environnement.
 - Le dépôt de départ était une application statique modulaire sans manifeste PWA, service worker, fonctions Cloud versionnées ni tests automatisés. Le README renvoyait à un `SECURITY.md` et à un `firebase.json` absents.
 
 ## Inventaire fonctionnel
@@ -36,4 +37,4 @@
 
 ## Validation à effectuer
 
-Les vérifications locales sont les tests Node de `tests/logic.test.mjs`, la syntaxe JavaScript et `git diff --check`. Les tests Firebase Emulator, l'authentification sur un vrai compte, l'upload Storage, l'envoi FCM sur appareil et la compilation Android nécessitent respectivement le Firebase CLI/émulateur, un projet Firebase actif, la clé VAPID et un environnement Android signé. Ils ne sont pas remplacés par les tests unitaires.
+Les vérifications locales sont les cinq tests Node de `tests/logic.test.mjs`, la syntaxe JavaScript et `git diff --check`. Le contrôle du site après intégration a confirmé l'affichage du bouton d'installation PWA sur Vercel. Les tests Firebase Emulator, l'authentification sur un vrai compte, l'upload Storage, l'envoi FCM sur appareil et la compilation Android nécessitent respectivement le Firebase CLI/émulateur, un projet Firebase actif, la clé VAPID et un environnement Android signé. Ils ne sont pas remplacés par les tests unitaires.
