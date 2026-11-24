@@ -1,8 +1,9 @@
-import { db, storage, collection, doc, setDoc, updateDoc, serverTimestamp, ref, uploadBytesResumable, getDownloadURL, deleteObject } from './firebase.js';
+import { db, storage, collection, doc, setDoc, updateDoc, serverTimestamp, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from './firebase.js';
 import { state } from './state.js';
 import { $, esc, toast, onAction, bindActions, closeModal, openModal, requireRole } from './ui.js';
 
 const OK_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SIMPLE_UPLOAD_MAX_BYTES = 512 * 1024;
 const FIELDS = [
   'new-title', 'new-type', 'new-commune', 'new-ref', 'new-landmark', 'new-property-number',
   'new-unit-number', 'new-building-name', 'price-hour', 'price-day', 'price-week', 'price-month',
@@ -16,12 +17,14 @@ function revokePreviews() {
 }
 
 async function optimizePhoto(file) {
+  // Small photos are already quick to send; avoid decoding and re-encoding them.
+  if (file.size <= SIMPLE_UPLOAD_MAX_BYTES) return file;
   if (typeof createImageBitmap !== 'function') return file;
   let bitmap;
   try {
     bitmap = await createImageBitmap(file);
     const longestSide = Math.max(bitmap.width, bitmap.height);
-    if (longestSide <= 1600 && file.size <= 512 * 1024) return file;
+    if (longestSide <= 1600) return file;
 
     const scale = Math.min(1, 1600 / longestSide);
     const canvas = document.createElement('canvas');
@@ -42,12 +45,14 @@ async function optimizePhoto(file) {
   }
 }
 
-function uploadPhoto(storageRef, file, onProgress) {
-  const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+function uploadPhoto(storageRef, file) {
+  const metadata = { contentType: file.type };
+  // Resumable uploads add setup overhead. A single request is faster for small photos.
+  if (file.size <= SIMPLE_UPLOAD_MAX_BYTES) return uploadBytes(storageRef, file, metadata);
+
+  const task = uploadBytesResumable(storageRef, file, metadata);
   return new Promise((resolve, reject) => {
-    task.on('state_changed', (snapshot) => {
-      onProgress(snapshot.bytesTransferred, snapshot.totalBytes);
-    }, reject, () => resolve(task.snapshot));
+    task.on('state_changed', undefined, reject, () => resolve(task.snapshot));
   });
 }
 
@@ -212,31 +217,17 @@ export default {
         const photoPaths = state.selectedExistingPhotos.map((photo) => photo.path);
         if (state.selectedFiles.length) {
           const fileCount = state.selectedFiles.length;
-          button.textContent = `Optimisation de ${fileCount} photo${fileCount > 1 ? 's' : ''}…`;
-          setPublishFeedback('Réduction des images pour accélérer leur envoi…', 'info');
+          if (state.selectedFiles.some((file) => file.size > SIMPLE_UPLOAD_MAX_BYTES)) {
+            button.textContent = `Optimisation de ${fileCount} photo${fileCount > 1 ? 's' : ''}…`;
+            setPublishFeedback('Réduction des images volumineuses…', 'info');
+          }
           const optimizedFiles = await Promise.all(state.selectedFiles.map(optimizePhoto));
           button.textContent = `Envoi de ${fileCount} photo${fileCount > 1 ? 's' : ''}…`;
           setPublishFeedback(`Envoi de ${fileCount} photo${fileCount > 1 ? 's' : ''} vers le stockage…`, 'info');
-          const transferredByPhoto = optimizedFiles.map(() => 0);
-          const totalBytes = optimizedFiles.reduce((sum, file) => sum + file.size, 0);
-          let lastDisplayedPercent = -1;
-          let lastAnnouncedPercent = 0;
           const uploadResults = await Promise.allSettled(optimizedFiles.map(async (file, index) => {
             const path = `apartments/${state.user.uid}/${crypto.randomUUID()}_${index}_${file.name.replace(/[^\w.-]/g, '_')}`;
             const storageRef = ref(storage, path);
-            const snapshot = await uploadPhoto(storageRef, file, (transferred) => {
-              transferredByPhoto[index] = transferred;
-              const uploaded = transferredByPhoto.reduce((sum, value) => sum + value, 0);
-              const percentage = totalBytes ? Math.min(100, Math.round(uploaded / totalBytes * 100)) : 100;
-              if (percentage !== lastDisplayedPercent) {
-                button.textContent = `Envoi des photos… ${percentage}%`;
-                lastDisplayedPercent = percentage;
-              }
-              if (percentage === 100 || percentage - lastAnnouncedPercent >= 10) {
-                setPublishFeedback(`Envoi des photos… ${percentage} % terminé`, 'info');
-                lastAnnouncedPercent = percentage;
-              }
-            });
+            const snapshot = await uploadPhoto(storageRef, file);
             uploadedPaths.push(path);
             return { url: await getDownloadURL(snapshot.ref), path };
           }));
