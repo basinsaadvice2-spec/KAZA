@@ -145,7 +145,7 @@ export default {
           tenantUid: apartment.tenantUid,
           reviewerUid: state.user.uid,
           apartmentId: apartment.id,
-          apartmentTitle: apartment.title || '',
+          apartmentTitle: String(apartment.title || '').slice(0, 180),
           paymentSpeed,
           propertyCare,
           createdAt: serverTimestamp()
