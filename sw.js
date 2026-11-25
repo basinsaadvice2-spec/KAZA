@@ -1,4 +1,5 @@
-const CACHE_NAME = 'kaza-shell-v9';
+// Bump this name when changing the app shell so installed clients discard stale modules.
+const CACHE_NAME = 'kaza-shell-v10';
 const APP_SHELL = [
   '/', '/index.html', '/manifest.webmanifest', '/variables.css', '/style.css',
   '/main.js', '/firebase.js', '/state.js', '/bus.js', '/ui.js', '/views.js',
@@ -39,12 +40,28 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!APP_SHELL.includes(url.pathname)) return;
-  event.respondWith(caches.match(request).then(async (cached) => {
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    const isJavaScript = /\.js$/.test(url.pathname);
+
+    // Keep application logic fresh online; fall back to the shell cache when offline.
+    if (isJavaScript) {
+      try {
+        const response = await fetch(request, { cache: 'no-cache' });
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch {
+        if (cached) return cached;
+        throw new Error('Application script unavailable');
+      }
+    }
+
     if (cached) return cached;
     const response = await fetch(request);
-    if (response.ok) (await caches.open(CACHE_NAME)).put(request, response.clone());
+    if (response.ok) await cache.put(request, response.clone());
     return response;
-  }));
+  })());
 });
 
 self.addEventListener('push', (event) => {
