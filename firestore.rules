@@ -13,7 +13,7 @@ service cloud.firestore {
     function validPhoto(photo, allowLegacyUrl) {
       return photo is string && (
         (photo.size() <= 205000 && photo.matches('^data:image/(webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$'))
-        || (allowLegacyUrl && photo.size() <= 2048 && photo.matches('^https://.{1,2048}$'))
+        || (allowLegacyUrl && photo.size() <= 2048 && photo.matches('^https://.*$'))
       );
     }
     function validPhotoAt(photos, index, allowLegacyUrl) {
