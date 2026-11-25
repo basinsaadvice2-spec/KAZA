@@ -278,6 +278,44 @@
         </div>
     </div>
 
+    <!-- ÉVALUATION APRÈS DÉPART -->
+    <div id="departure-review-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="departure-review-title" style="display:none;">
+        <div class="modal-box">
+            <h3 id="departure-review-title">Évaluer la location</h3>
+            <p id="departure-review-property" class="muted-text"></p>
+            <p class="muted-text">Notez l’expérience de location de 1 (très insuffisant) à 5 (excellent).</p>
+            <div class="form-input-container no-icon">
+                <label for="review-payment-speed">Vitesse de paiement du loyer</label>
+                <select id="review-payment-speed">
+                    <option value="">Choisir une note sur 5</option>
+                    <option value="1">1 — Très lent</option>
+                    <option value="2">2 — Lent</option>
+                    <option value="3">3 — Correct</option>
+                    <option value="4">4 — Rapide</option>
+                    <option value="5">5 — Très rapide</option>
+                </select>
+                <small id="review-payment-speed-error" class="form-field-error" hidden></small>
+            </div>
+            <div class="form-input-container no-icon">
+                <label for="review-property-care">Entretien de la propriété</label>
+                <select id="review-property-care">
+                    <option value="">Choisir une note sur 5</option>
+                    <option value="1">1 — Très insuffisant</option>
+                    <option value="2">2 — Insuffisant</option>
+                    <option value="3">3 — Correct</option>
+                    <option value="4">4 — Bon</option>
+                    <option value="5">5 — Excellent</option>
+                </select>
+                <small id="review-property-care-error" class="form-field-error" hidden></small>
+            </div>
+            <p id="departure-review-feedback" class="publish-feedback" role="status" aria-live="polite" hidden></p>
+            <div class="modal-actions">
+                <button class="btn-submit-form" type="button" data-action="cancel-departure-review" style="background:var(--text-muted);">Annuler</button>
+                <button id="btn-submit-departure-review" class="btn-submit-form owner-theme" type="button" data-action="submit-departure-review">Enregistrer les notes et libérer le logement</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODALE QUITTANCE -->
     <div id="receipt-modal" class="modal-overlay" style="display:none;">
         <div class="modal-box">

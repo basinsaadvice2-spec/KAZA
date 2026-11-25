@@ -11,18 +11,40 @@ const thumbs = (a) => {
 };
 const BADGE = { 'Disponible': 'badge-dispo', 'Réservé': 'badge-dispo" style="background:rgba(245,158,11,.95)', 'Loué': 'badge-loue' };
 
+function tenantReferenceSummary(uid) {
+  const entry = state.tenantReferences[uid];
+  if (!entry) return '<div class="tenant-reference-summary"><strong>Références locatives</strong><span>Chargement des évaluations…</span></div>';
+  if (entry.error) return '<div class="tenant-reference-summary"><strong>Références locatives</strong><span>Évaluations indisponibles. Vérifiez les règles Firestore.</span></div>';
+  const reviews = entry.reviews || [];
+  if (!reviews.length) return '<div class="tenant-reference-summary"><strong>Références locatives</strong><span>Aucune évaluation antérieure.</span></div>';
+  const average = (key) => (reviews.reduce((sum, review) => sum + Number(review[key] || 0), 0) / reviews.length)
+    .toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return `<div class="tenant-reference-summary"><strong>Références d’anciens bailleurs (${reviews.length})</strong><span>Paiement du loyer : <b>${average('paymentSpeed')}/5</b></span><span>Entretien du logement : <b>${average('propertyCare')}/5</b></span></div>`;
+}
+
 function render(box) {
   const mine = state.apartments.filter(a => a.ownerUid === state.user.uid);
   const rented = mine.filter(a => availabilityStatusOf(a) === 'Loué'), free = mine.filter(a => availabilityStatusOf(a) === 'Disponible');
-  const estimated = rented.reduce((s, a) => s + Number(ratesOf(a).month || a.price || 0), 0);
+  const monthlyPrices = mine.map((a) => Number(ratesOf(a).month || 0)).filter((amount) => amount > 0);
+  const estimatedMonthly = monthlyPrices.reduce((sum, amount) => sum + amount, 0);
+  const monthlyEstimate = mine.length === 1
+    ? { title: 'Tarif du bien', value: ratesText(mine[0]) || 'Aucun tarif renseigné', note: 'Tarifs affichés sur l’annonce.' }
+    : {
+      title: 'Estimation mensuelle si tous les biens sont loués',
+      value: monthlyPrices.length ? `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(estimatedMonthly)} $ / mois` : 'À renseigner',
+      note: mine.length > monthlyPrices.length
+        ? `${mine.length - monthlyPrices.length} bien(s) sans tarif mensuel ne sont pas comptés.`
+        : 'Somme des tarifs au mois de toutes les propriétés.'
+    };
   const month = new Date().toISOString().slice(0, 7);
   const collected = state.payments.filter(p => p.status === 'Validé' && p.period === month).reduce((s, p) => s + Number(p.amount || 0), 0);
   const pending = mine.filter(a => availabilityStatusOf(a) === 'Réservé' || (availabilityStatusOf(a) === 'Loué' && a.departureRequested));
 
   const pendingHtml = pending.length ? `<div class="surface-box"><h4 style="margin-bottom:12px">À traiter (${pending.length})</h4>${pending.map(a => {
     const isBooking = availabilityStatusOf(a) === 'Réservé';
+    const references = isBooking && a.tenantUid ? tenantReferenceSummary(a.tenantUid) : '';
     return `<div style="border-top:1px solid var(--border);padding:12px 0"><strong>${esc(a.title)}</strong><p class="muted-text" style="margin:4px 0 10px">${isBooking ? '🔑 Demande de réservation de' : '🚪 Départ signalé par'} ${esc(a.tenantName || 'un locataire')}</p>
-      ${isBooking ? `<button class="btn-action-trigger tenant-btn small-btn" data-action="confirm-booking" data-id="${esc(a.id)}">Confirmer</button> <button class="btn-action-trigger danger-btn small-btn" data-action="refuse-booking" data-id="${esc(a.id)}">Refuser</button>`
+      ${references}${isBooking ? `<button class="btn-action-trigger tenant-btn small-btn" data-action="confirm-booking" data-id="${esc(a.id)}">Confirmer</button> <button class="btn-action-trigger danger-btn small-btn" data-action="refuse-booking" data-id="${esc(a.id)}">Refuser</button>`
         : `<button class="btn-action-trigger small-btn" data-action="process-departure" data-id="${esc(a.id)}">Traiter le départ</button>`}</div>`;
   }).join('')}</div>` : '';
 
@@ -41,7 +63,7 @@ function render(box) {
     <div class="stats-kpi-card blue-indicator"><div class="stats-kpi-header">Total biens</div><div class="stats-kpi-number">${mine.length}</div></div>
     <div class="stats-kpi-card green-indicator"><div class="stats-kpi-header">Occupés</div><div class="stats-kpi-number">${rented.length}</div></div>
     <div class="stats-kpi-card blue-indicator"><div class="stats-kpi-header">Disponibles</div><div class="stats-kpi-number">${free.length}</div></div></div>
-    <div class="revenue-box"><div><h4>Revenus estimés / mois</h4></div><strong>${estimated} $</strong></div>
+    <div class="revenue-box"><div><h4>${esc(monthlyEstimate.title)}</h4><p class="muted-text" style="margin:4px 0 0">${esc(monthlyEstimate.note)}</p></div><strong>${esc(monthlyEstimate.value)}</strong></div>
     <div class="revenue-box"><div><h4>Encaissé ce mois</h4></div><strong>${collected} $</strong></div>${pendingHtml}
     <div class="action-context-bar"><span class="context-title">Mes propriétés</span><button class="btn-action-trigger" data-action="open-publish"><i class="fa-solid fa-plus"></i> Ajouter</button></div>${list}`;
 }
@@ -49,7 +71,7 @@ function render(box) {
 export default {
   name: 'owner',
   init() {
-    addView('owner', 'owner-apparts', render, ['apartments:changed', 'payments:changed']);
+    addView('owner', 'owner-apparts', render, ['apartments:changed', 'payments:changed', 'tenant-references:changed']);
     bus.on('session:start', (u) => { if (u.role === 'owner') { $('owner-greeting').innerText = `Bonjour, ${u.name}`; show('owner', 'owner-apparts'); } });
     onAction('open-publish', () => { requireRole('owner'); openModal('add-appart-modal'); });
     onAction('delete-apart', async (el) => {

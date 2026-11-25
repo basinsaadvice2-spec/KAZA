@@ -5,6 +5,7 @@ export const state = {
   apartments: [],
   payments: [],
   ownerProfiles: Object.create(null),
+  tenantReferences: Object.create(null),
   followedApartmentIds: new Set(),
   selectedTypeTag: '',
   selectedFiles: [],

@@ -5,6 +5,7 @@
 - Firebase Authentication fournit l'identité; `users/{uid}.role` fixe le rôle. Une personne ne peut pas modifier son rôle depuis le client.
 - Les propriétaires ne modifient que les champs de leur annonce. Les transitions réservation/location/paiement/départ sont limitées aux champs attendus.
 - Les locataires ne peuvent réserver qu'un bien disponible, annuler leur propre demande et signaler leur propre départ.
+- Les évaluations locatives (paiement et entretien, notes de 1 à 5) sont enregistrées uniquement au traitement d'un départ vérifié; seuls les comptes Bailleur peuvent les lire, et elles ne déclenchent aucun refus automatique.
 - Les profils dans `publicProfiles/{uid}` ne publient que le nom, le téléphone, le rôle et le type de compte. Les locataires peuvent lire le profil d'un annonceur propriétaire; les listes de profils sont interdites.
 - Les photos sources sont limitées à JPEG, PNG et WebP, à 5 Mo et 4 fichiers maximum. Elles sont recompressées sur l'appareil (800 px, WebP ou JPEG) à 150 Ko environ maximum chacune; le client refuse les documents estimés au-dessus de 900 Ko.
 

@@ -27,7 +27,7 @@ service cloud.firestore {
         && validPhotoAt(photos, 2, allowLegacyUrl)
         && validPhotoAt(photos, 3, allowLegacyUrl);
     }
-    function tenantKeys() { return ['status','availabilityStatus','tenantUid','tenantName','paymentStatus','reservedAt','departureRequested']; }
+    function tenantKeys() { return ['status','availabilityStatus','tenantUid','tenantName','paymentStatus','reservedAt','departureRequested','departureReviewId']; }
     function listingKeys() {
       return ['id','title','avenue','landmark','reference','rates','price','type','commune',
         'propertyNumber','unitNumber','buildingName','garantie','snel','water','mapsUrl',
@@ -41,6 +41,7 @@ service cloud.firestore {
         && request.resource.data.get('tenantName', null) == null
         && request.resource.data.get('paymentStatus', null) == null
         && request.resource.data.get('departureRequested', false) == false
+        && request.resource.data.get('departureReviewId', null) == null
         && request.resource.data.get('reservedAt', null) == null;
     }
 
@@ -107,6 +108,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /tenantReferences/{tenantUid}/reviews/{reviewId} {
+      allow get, list: if signedIn() && role() == 'owner';
+      allow create: if signedIn() && role() == 'owner'
+        && request.resource.data.keys().hasAll(['tenantUid','reviewerUid','apartmentId','apartmentTitle','paymentSpeed','propertyCare','createdAt'])
+        && request.resource.data.keys().hasOnly(['tenantUid','reviewerUid','apartmentId','apartmentTitle','paymentSpeed','propertyCare','createdAt'])
+        && request.resource.data.tenantUid == tenantUid
+        && request.resource.data.reviewerUid == me()
+        && request.resource.data.apartmentId is string
+        && request.resource.data.apartmentId.size() > 0
+        && request.resource.data.apartmentTitle is string
+        && request.resource.data.apartmentTitle.size() <= 180
+        && request.resource.data.paymentSpeed is int
+        && request.resource.data.paymentSpeed >= 1 && request.resource.data.paymentSpeed <= 5
+        && request.resource.data.propertyCare is int
+        && request.resource.data.propertyCare >= 1 && request.resource.data.propertyCare <= 5
+        && request.resource.data.createdAt is timestamp
+        && get(apartmentPath(request.resource.data.apartmentId)).data.ownerUid == me()
+        && get(apartmentPath(request.resource.data.apartmentId)).data.tenantUid == tenantUid
+        && availability(get(apartmentPath(request.resource.data.apartmentId)).data) == 'Loué'
+        && get(apartmentPath(request.resource.data.apartmentId)).data.get('departureRequested', false) == true
+        && getAfter(apartmentPath(request.resource.data.apartmentId)).data.get('departureReviewId', null) == reviewId
+        && getAfter(apartmentPath(request.resource.data.apartmentId)).data.get('tenantUid', null) == null
+        && availability(getAfter(apartmentPath(request.resource.data.apartmentId)).data) == 'Disponible';
+      allow update, delete: if false;
+    }
+
     match /apartments/{id} {
       allow get, list: if signedIn() && (
         (role() == 'owner' && resource.data.ownerUid == me())
@@ -142,14 +169,26 @@ service cloud.firestore {
         || (resource.data.ownerUid == me() && availability(resource.data) == 'Réservé' && clearsTenant()
           && changed().hasOnly(tenantKeys()))
         || (resource.data.ownerUid == me() && availability(resource.data) == 'Loué'
-          && resource.data.get('departureRequested', false) == true && clearsTenant()
+          && resource.data.get('departureRequested', false) == true
+          && resource.data.get('departureReviewId', null) == null
+          && request.resource.data.status == 'publie'
+          && request.resource.data.availabilityStatus == 'Disponible'
+          && request.resource.data.get('tenantUid', null) == null
+          && request.resource.data.get('tenantName', null) == null
+          && request.resource.data.get('paymentStatus', null) == null
+          && request.resource.data.get('departureRequested', false) == false
+          && request.resource.data.get('reservedAt', null) == null
+          && request.resource.data.departureReviewId is string
+          && request.resource.data.departureReviewId.size() <= 100
+          && existsAfter(/databases/$(db)/documents/tenantReferences/$(resource.data.tenantUid)/reviews/$(request.resource.data.departureReviewId))
           && changed().hasOnly(tenantKeys()))
         || (role() == 'tenant' && availability(resource.data) == 'Disponible'
           && request.resource.data.status == 'publie'
           && request.resource.data.availabilityStatus == 'Réservé'
+          && request.resource.data.get('departureReviewId', null) == null
           && request.resource.data.tenantUid == me()
           && request.resource.data.paymentStatus == null
-          && changed().hasOnly(['status','availabilityStatus','tenantUid','tenantName','paymentStatus','reservedAt']))
+          && changed().hasOnly(['status','availabilityStatus','tenantUid','tenantName','paymentStatus','reservedAt','departureReviewId']))
         || (resource.data.get('tenantUid', null) == me()
           && availability(resource.data) == 'Réservé'
           && request.resource.data.status == 'publie'

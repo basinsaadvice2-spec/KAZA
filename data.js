@@ -5,6 +5,33 @@ import { toast } from './ui.js';
 let apartmentUnsubs = [];
 let apartmentSnapshots = new Map();
 let ownerProfileUnsubs = new Map();
+let tenantReferenceUnsubs = new Map();
+
+function syncTenantReferences() {
+  const tenantIds = new Set(state.user?.role === 'owner'
+    ? state.apartments.map((apartment) => apartment.tenantUid).filter(Boolean)
+    : []);
+  for (const [uid, stop] of tenantReferenceUnsubs) {
+    if (!tenantIds.has(uid)) {
+      stop();
+      tenantReferenceUnsubs.delete(uid);
+      delete state.tenantReferences[uid];
+    }
+  }
+  for (const uid of tenantIds) {
+    if (tenantReferenceUnsubs.has(uid)) continue;
+    const reviews = collection(db, 'tenantReferences', uid, 'reviews');
+    const stop = onSnapshot(reviews, (snap) => {
+      state.tenantReferences[uid] = { reviews: snap.docs.map((review) => ({ id: review.id, ...review.data() })), error: false };
+      bus.emit('tenant-references:changed');
+    }, (error) => {
+      state.tenantReferences[uid] = { reviews: [], error: true };
+      console.warn('[KAZA] Références locatives indisponibles', error.code || error);
+      bus.emit('tenant-references:changed');
+    });
+    tenantReferenceUnsubs.set(uid, stop);
+  }
+}
 
 function syncOwnerProfiles() {
   const ownerIds = new Set(state.apartments.map((a) => a.ownerUid).filter(Boolean));
@@ -55,6 +82,7 @@ function startApartmentListeners(user) {
       state.apartments = [...merged.values()];
       bus.emit('apartments:changed');
       syncOwnerProfiles();
+      syncTenantReferences();
     }, (error) => {
       apartmentSnapshots.set(key, []);
       const merged = new Map();
@@ -79,6 +107,9 @@ export default {
       for (const stop of ownerProfileUnsubs.values()) stop();
       ownerProfileUnsubs = new Map();
       state.ownerProfiles = Object.create(null);
+      for (const stop of tenantReferenceUnsubs.values()) stop();
+      tenantReferenceUnsubs = new Map();
+      state.tenantReferences = Object.create(null);
       state.apartments = [];
       bus.emit('owner-profiles:changed');
     });
