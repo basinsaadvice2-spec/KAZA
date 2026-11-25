@@ -1,10 +1,10 @@
-const CACHE_NAME = 'kaza-shell-v7';
+const CACHE_NAME = 'kaza-shell-v8';
 const APP_SHELL = [
   '/', '/index.html', '/manifest.webmanifest', '/variables.css', '/style.css',
   '/main.js', '/firebase.js', '/state.js', '/bus.js', '/ui.js', '/views.js',
   '/theme.js', '/auth.js', '/data.js', '/format.js', '/catalog.js', '/booking.js',
   '/owner.js', '/publish.js', '/notifications.js', '/pwa.js', '/payments.js',
-  '/chat.js', '/chat-service.js', '/broadcast.js', '/follow.js', '/push-config.js',
+  '/chat.js', '/chat-service.js', '/broadcast.js', '/follow.js', '/photo-viewer.js', '/push-config.js',
   '/icons/kaza-192.png', '/icons/kaza-512.png'
 ];
 

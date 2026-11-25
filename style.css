@@ -46,7 +46,9 @@ body { background: var(--background); color: var(--text-main); transition: backg
 /* Cartes de biens et galerie */
 .apartment-card-ui { background: var(--surface); border: 1px solid var(--border); border-radius: 26px; overflow: hidden; margin-bottom: 24px; box-shadow: var(--shadow-sm); }
 .apartment-card-image-placeholder { width: 100%; height: 230px; background: var(--input-bg); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.apartment-card-image-placeholder img { width: 100%; height: 100%; object-fit: contain; background: var(--input-bg); position: absolute; top: 0; left: 0; }
+.apartment-photo-open { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.apartment-photo-open:focus-visible { outline: 3px solid var(--primary); outline-offset: -4px; }
+.apartment-card-image-placeholder .main-photo { display: block; width: 100%; height: 100%; object-fit: contain; background: var(--input-bg); }
 .apartment-card-badge { position: absolute; top: 16px; right: 16px; padding: 6px 14px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase; z-index: 2; }
 .badge-dispo { background: rgba(16, 185, 129, 0.95); }
 .badge-loue { background: rgba(239, 68, 68, 0.95); }
@@ -154,6 +156,19 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .modal-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
 .modal-actions > .btn-submit-form { flex: 1; min-width: 0; }
+.photo-viewer-dialog { width: min(1100px, 96vw); max-width: 96vw; max-height: 94vh; max-height: 94dvh; margin: auto; padding: 0; overflow: hidden; color: #fff; background: #09090f; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,.55); }
+.photo-viewer-dialog::backdrop { background: rgba(3,7,18,.86); backdrop-filter: blur(5px); }
+.photo-viewer-shell { display: flex; flex-direction: column; max-height: 94vh; max-height: 94dvh; }
+.photo-viewer-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.14); }
+.photo-viewer-toolbar button { width: 40px; height: 40px; padding: 0; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; background: rgba(255,255,255,.08); color: #fff; font-size: 15px; cursor: pointer; }
+.photo-viewer-toolbar button:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+.photo-viewer-toolbar button:disabled { opacity: .45; cursor: default; }
+.photo-viewer-toolbar button:focus-visible { outline: 3px solid #a78bfa; outline-offset: 2px; }
+.photo-viewer-zoom-level { min-width: 54px; color: rgba(255,255,255,.85); font-size: 12px; font-weight: 700; text-align: center; }
+.photo-viewer-stage { display: flex; align-items: center; justify-content: center; width: 100%; height: min(70vh, 760px); height: min(70dvh, 760px); overflow: auto; background: #050508; overscroll-behavior: contain; }
+.photo-viewer-stage.is-zoomed { align-items: flex-start; justify-content: flex-start; }
+.photo-viewer-stage img { display: block; flex: 0 0 auto; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.photo-viewer-caption { padding: 0 16px 12px; overflow: hidden; color: rgba(255,255,255,.75); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .photo-upload-note { margin-top: 9px; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 .publish-feedback { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.45; }
 .publish-feedback[data-state="error"] { color: #991b1b; background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .28); }

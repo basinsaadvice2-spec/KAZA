@@ -15,7 +15,7 @@ function card(a) {
   const advertiser = advertiserOf(a, state.ownerProfiles[a.ownerUid]);
   const photos = photosOf(a).map(safeUrl).filter(Boolean);
   const maps = safeUrl(a.mapsUrl);
-  const img = photos.length ? `<img class="main-photo" src="${esc(photos[0])}" alt="${esc(a.title)}">` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>';
+  const img = photos.length ? `<button type="button" class="apartment-photo-open" data-action="view-photo" aria-label="Agrandir la photo de ${esc(a.title)}"><img class="main-photo" src="${esc(photos[0])}" alt="${esc(a.title)}"></button>` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>';
   const thumbs = photos.length > 1 ? `<div class="gallery-miniatures">${photos.map((p, i) => `<img data-action="thumb" data-src="${esc(p)}" src="${esc(p)}" class="${i ? '' : 'active-thumb'}" alt="Photo ${i + 1}">`).join('')}</div>` : '';
   const contact = advertiser.phone ? `<div class="tenant-actions-row"><a class="quick-contact-btn call" href="${esc(telHref(advertiser.phone))}"><i class="fa-solid fa-phone"></i> Appeler</a><a class="quick-contact-btn whatsapp" target="_blank" rel="noopener" href="${esc(waHref(advertiser.phone, inquiryMessage({ ...a, ownerName: advertiser.name })))}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a></div>` : '';
   const tags = [a.type, a.snel && `Électricité : ${a.snel}`, a.water && `Eau : ${a.water}`, a.garantie && `Garantie : ${a.garantie}`].filter(Boolean).map(t => `<span class="kin-spec-tag">${esc(t)}</span>`).join('');

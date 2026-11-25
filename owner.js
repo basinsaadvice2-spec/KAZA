@@ -29,7 +29,7 @@ function render(box) {
   const list = mine.length ? mine.map(a => {
     const p = safeUrl(photosOf(a)[0]);
     const availability = availabilityStatusOf(a);
-    return `<div class="apartment-card-ui"><div class="apartment-card-image-placeholder">${p ? `<img class="main-photo" src="${esc(p)}" alt="${esc(a.title)}">` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>'}<span class="apartment-card-badge ${BADGE[availability] || 'badge-loue'}">${esc(availability || a.status)}</span></div>${thumbs(a)}
+    return `<div class="apartment-card-ui"><div class="apartment-card-image-placeholder">${p ? `<button type="button" class="apartment-photo-open" data-action="view-photo" aria-label="Agrandir la photo de ${esc(a.title)}"><img class="main-photo" src="${esc(p)}" alt="${esc(a.title)}"></button>` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>'}<span class="apartment-card-badge ${BADGE[availability] || 'badge-loue'}">${esc(availability || a.status)}</span></div>${thumbs(a)}
       <div class="apartment-card-details"><div class="apartment-card-location">${esc(a.commune)}</div><div class="apartment-card-title">${esc(a.title)}</div>
       ${(a.propertyNumber || a.unitNumber || a.buildingName) ? `<div class="apartment-card-address-detail">${esc([a.unitNumber ? `Appartement ${a.unitNumber}` : a.propertyNumber ? `N° ${a.propertyNumber}` : '', a.buildingName].filter(Boolean).join(' • '))}</div>` : ''}
       <div class="apartment-card-pricing-row"><div class="apartment-card-price" style="font-size:15px;">${esc(ratesText(a))}</div>
