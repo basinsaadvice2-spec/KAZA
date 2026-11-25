@@ -15,7 +15,7 @@
 |---|---|---|---|
 | Connexion, inscription et rôles bailleur/locataire | `auth.js`, `firebase.js`, `state.js` | Firebase Auth et profil Firestore; type agence absent | Ajout du type agence, profil annonceur public limité et compatibilité des comptes anciens |
 | Catalogue et recherche locataire | `catalog.js`, `data.js`, `format.js`, `views.js` | Annonces chargées puis filtrées dans le navigateur; champs de recherche existants | Recherche élargie aux numéros de logement et immeuble; filtre Parcelle; affichage du contact et de l'annonceur |
-| Publication de biens et photos | `publish.js`, `owner.js`, `storage.rules` | Publication existante; pas d'édition de fiche ni d'identifiants de logement dédiés | Ajout édition, champs conditionnels, nettoyage des photos après échec et règles de taille/type |
+| Publication de biens et photos | `publish.js`, `owner.js`, `firestore.rules` | Publication avec images intégrées au document Firestore; édition de fiche et contrôle de taille | Compression locale WebP/JPEG, images data URL, limite de taille du document et contrôle bailleur |
 | Réservation, annulation et départ | `booking.js`, `owner.js`, règles Firestore | Transitions côté client; pas de notifications serveur | Notifications réelles via triggers; transitions Firestore limitées par rôle et état |
 | Paiements et quittances | `payments.js`, `format.js`, règles Firestore | Déclaration, validation/refus, reçu imprimable | Notification serveur à la déclaration et décision; validation renforcée des écritures |
 | Messagerie et diffusion bailleur | `chat.js`, `chat-service.js`, `broadcast.js` | Conversations et messages; notifications créées côté client | Push + centre créés depuis le backend pour les nouveaux messages |
@@ -28,7 +28,7 @@
 
 ## Modifications importantes
 
-- L'édition conserve les photos non retirées et supprime les nouveaux objets Storage si l'écriture Firestore échoue.
+- Les photos sont encodées en data URL dans le document de l'annonce; elles sont recompressées plus fortement si le document approche 900 Ko.
 - Les numéros de maison/parcelle, d'appartement et d'immeuble sont enregistrés et consultables dans le catalogue.
 - Les profils annonceurs sont associés aux `ownerUid` réels, sans inventer d'identité.
 - Les alertes sont créées depuis les changements réels de réservation, paiement, messagerie, annonce et logement suivi. Les IDs stables et transactions protègent contre les doublons des triggers.
@@ -37,4 +37,4 @@
 
 ## Validation à effectuer
 
-Les vérifications locales sont les cinq tests Node de `tests/logic.test.mjs`, la syntaxe JavaScript et `git diff --check`. Le contrôle du site après intégration a confirmé l'affichage du bouton d'installation PWA sur Vercel. Les tests Firebase Emulator, l'authentification sur un vrai compte, l'upload Storage, l'envoi FCM sur appareil et la compilation Android nécessitent respectivement le Firebase CLI/émulateur, un projet Firebase actif, la clé VAPID et un environnement Android signé. Ils ne sont pas remplacés par les tests unitaires.
+Les vérifications locales comprennent les tests Node de `tests/logic.test.mjs`, la syntaxe JavaScript et `git diff --check`. Le contrôle du site après intégration a confirmé l'affichage du bouton d'installation PWA sur Vercel. Les tests Firebase Emulator, l'authentification sur un vrai compte, l'envoi FCM sur appareil et la compilation Android nécessitent respectivement le Firebase CLI/émulateur, un projet Firebase actif, la clé VAPID et un environnement Android signé. Ils ne sont pas remplacés par les tests unitaires.

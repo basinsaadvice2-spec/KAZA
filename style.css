@@ -160,6 +160,10 @@ body { background: var(--background); color: var(--text-main); transition: backg
 .dark-mode .publish-feedback[data-state="error"] { color: #fecaca; }
 .publish-feedback[data-state="info"] { color: var(--text-main); background: var(--input-bg); border: 1px solid var(--border); }
 .publish-feedback[hidden] { display: none !important; }
+.form-field-error { display: block; margin-top: 6px; color: #b91c1c; font-size: 12px; line-height: 1.4; }
+.form-field-error[hidden] { display: none !important; }
+.dark-mode .form-field-error { color: #fca5a5; }
+.form-input-container input[aria-invalid="true"], .form-input-container select[aria-invalid="true"] { border-color: #ef4444; }
 
 /* PWA, installation et états réseau */
 .network-status { position: fixed; inset: 0 0 auto; z-index: 40000; padding: 10px 16px; background: #7c2d12; color: #fff; text-align: center; font-size: 12px; font-weight: 700; }

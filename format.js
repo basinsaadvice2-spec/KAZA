@@ -3,7 +3,10 @@ export const RATE_LABELS = { hour: 'heure', day: 'jour', week: 'semaine', month:
 export const ratesOf = (a) => a.rates || { month: a.price || 0 };
 export const ratesText = (a) => Object.entries(ratesOf(a)).filter(([, v]) => v > 0).map(([k, v]) => `${v} $ / ${RATE_LABELS[k] || k}`).join(' • ');
 export const photosOf = (a) => (a.photos && a.photos.length) ? a.photos : (a.photoUrl ? [a.photoUrl] : []);
-export const safeUrl = (u) => /^https?:\/\//i.test(u || '') ? u : '';
+const LEGACY_AVAILABILITY = new Set(['Disponible', 'Réservé', 'Loué']);
+export const availabilityStatusOf = (a) => a?.availabilityStatus || (LEGACY_AVAILABILITY.has(a?.status) ? a.status : '');
+const SAFE_IMAGE_DATA_URL = /^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/i;
+export const safeUrl = (u) => /^https?:\/\//i.test(u || '') || SAFE_IMAGE_DATA_URL.test(u || '') ? u : '';
 export function advertiserOf(apartment, profile = null) {
   const name = String(profile?.name || apartment.ownerName || '').trim();
   return {
@@ -33,7 +36,9 @@ export const waHref = (raw, msg) => `https://wa.me/${normalizePhone(raw)}?text=$
 export const inquiryMessage = (a) => `Bonjour ${a.ownerName || ''}, je suis intéressé(e) par « ${a.title} » (${a.commune}, ${a.reference}) — ${ratesText(a)}. Réf. ${a.id}. Message envoyé depuis Kaza.`;
 
 export function matchesFilters(a, f) {
-  if (a.status !== 'Disponible') return false;
+  const availability = availabilityStatusOf(a);
+  const isPublic = a.status === 'publie';
+  if (!isPublic || availability !== 'Disponible') return false;
   const query = String(f.q || '').trim().toLowerCase();
   if (f.commune && a.commune !== f.commune) return false;
   if (f.type && a.type !== f.type) return false;

@@ -196,17 +196,20 @@
             <div class="form-input-container no-icon">
                 <label>Titre de l'annonce</label>
                 <input type="text" id="new-title" placeholder="Ex: Studio meublé climatisé">
+                <small id="publish-title-error" class="form-field-error" hidden></small>
             </div>
             <div class="filter-grid-2">
                 <div class="form-input-container no-icon">
                     <label>Type de bien</label>
                     <select id="new-type"><option value="Appartement">Appartement</option><option value="Maison">Maison</option><option value="Parcelle">Parcelle</option><option value="Studio">Studio</option></select>
+                    <small id="publish-type-error" class="form-field-error" hidden></small>
                 </div>
                 <div class="form-input-container no-icon">
                     <label>Commune</label>
                     <select id="new-commune">
                         <option value="Gombe">Gombe</option><option value="Ngaliema">Ngaliema</option><option value="Limete">Limete</option><option value="Lingwala">Lingwala</option><option value="Kintambo">Kintambo</option><option value="Bandalungwa">Bandalungwa</option><option value="Kasa-Vubu">Kasa-Vubu</option><option value="Lemba">Lemba</option><option value="Matete">Matete</option><option value="Masina">Masina</option><option value="Ndjili">Ndjili</option><option value="Mont-Ngafula">Mont-Ngafula</option>
                     </select>
+                    <small id="publish-commune-error" class="form-field-error" hidden></small>
                 </div>
             </div>
             <div class="filter-grid-2">
@@ -226,6 +229,7 @@
             <div class="form-input-container no-icon">
                 <label>Avenue</label>
                 <input type="text" id="new-ref" placeholder="Ex: Av. du 24 Novembre">
+                <small id="publish-avenue-error" class="form-field-error" hidden></small>
             </div>
             <div class="form-input-container no-icon">
                 <label>Point de repère</label>
@@ -239,6 +243,7 @@
                     <div class="form-input-container tight no-icon" style="margin-bottom:0;"><label>Semaine ($)</label><input type="number" id="price-week" placeholder="150"></div>
                     <div class="form-input-container tight no-icon" style="margin-bottom:0;"><label>Mois ($)</label><input type="number" id="price-month" placeholder="350"></div>
                 </div>
+                <small id="publish-rates-error" class="form-field-error" hidden></small>
             </div>
             <div class="filter-grid-2">
                 <div class="form-input-container no-icon"><label>Garantie</label><input type="text" id="new-garantie" placeholder="2 mois + 1"></div>
@@ -261,7 +266,8 @@
                     <span>Ajouter jusqu'à 4 photos</span>
                 </button>
                 <input type="file" id="new-photo" accept="image/jpeg,image/png,image/webp" multiple hidden>
-                <p class="photo-upload-note">KAZA réduit automatiquement le poids des images. Firebase Storage doit être activé pour publier.</p>
+            <p class="photo-upload-note">Les photos sont compressées sur cet appareil avant la publication (4 maximum).</p>
+            <small id="publish-photos-error" class="form-field-error" hidden></small>
                 <div id="photo-preview-container" class="photo-preview-grid"></div>
             </div>
             <p id="publish-feedback" class="publish-feedback" role="status" aria-live="polite" hidden></p>

@@ -1,5 +1,6 @@
 export function matchesSavedSearch(apartment, search) {
-  if (apartment.status !== 'Disponible') return false;
+  const availability = apartment.availabilityStatus || (['Disponible', 'Réservé', 'Loué'].includes(apartment.status) ? apartment.status : '');
+  if (availability !== 'Disponible') return false;
   if (search.commune && apartment.commune !== search.commune) return false;
   if (search.type && apartment.type !== search.type) return false;
   const legacy = {

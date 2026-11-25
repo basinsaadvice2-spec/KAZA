@@ -2,6 +2,7 @@ import { db, collection, doc, onSnapshot, writeBatch, serverTimestamp } from './
 import { state } from './state.js';
 import { bus } from './bus.js';
 import { toast, onAction, requireRole } from './ui.js';
+import { availabilityStatusOf } from './format.js';
 
 let unsub = null;
 
@@ -27,7 +28,7 @@ export default {
     onAction('toggle-follow', async (element) => {
       requireRole('tenant');
       const apartment = state.apartments.find((item) => item.id === element.dataset.id);
-      if (!apartment || apartment.status !== 'Disponible') throw new Error('Ce logement n’est plus disponible.');
+      if (!apartment || availabilityStatusOf(apartment) !== 'Disponible') throw new Error('Ce logement n’est plus disponible.');
       const followerRef = doc(db, 'apartments', apartment.id, 'followers', state.user.uid);
       const userFollowRef = doc(db, 'users', state.user.uid, 'followedApartments', apartment.id);
       const batch = writeBatch(db);

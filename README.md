@@ -1,6 +1,6 @@
 # KAZA
 
-KAZA relie les bailleurs, les agences immobilières et les locataires à Kinshasa. Le site est une application web statique en HTML, CSS et JavaScript natif. Firebase fournit l'authentification, Firestore, Storage et les fonctions serveur.
+KAZA relie les bailleurs, les agences immobilières et les locataires à Kinshasa. Le site est une application web statique en HTML, CSS et JavaScript natif. Firebase fournit l'authentification, Firestore et les fonctions serveur. Les photos des annonces sont compressées dans le navigateur puis enregistrées dans le document Firestore du bien.
 
 ## Fonctionnalités
 
@@ -24,7 +24,7 @@ Le projet Firebase par défaut est `kaza-bf0dc` (`.firebaserc`). La configuratio
 Les fonctions Cloud s'exécutent avec l'identité de service Firebase. Pour déployer les règles, l'index et les fonctions depuis une machine authentifiée avec le Firebase CLI :
 
 ```powershell
-firebase deploy --only firestore:rules,firestore:indexes,storage,functions
+firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
 
 Pour activer le push Web, ajoutez la **clé publique Web Push (VAPID)** générée dans les paramètres Cloud Messaging du projet dans `push-config.js`. Elle est publique par conception. Ne placez jamais de clé privée VAPID, de clé Admin ou de compte de service dans le JavaScript client. Le centre est intégré à l'interface, mais les nouvelles notifications d'événement nécessitent que les fonctions et les règles Firebase soient déployées. Les push nécessitent en plus la clé VAPID.

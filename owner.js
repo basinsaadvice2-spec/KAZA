@@ -1,9 +1,9 @@
-import { db, storage, doc, deleteDoc, ref, deleteObject } from './firebase.js';
+import { db, doc, deleteDoc } from './firebase.js';
 import { state } from './state.js';
 import { bus } from './bus.js';
 import { $, esc, toast, onAction, requireRole, openModal } from './ui.js';
 import { addView, show } from './views.js';
-import { ratesOf, ratesText, photosOf, safeUrl } from './format.js';
+import { ratesOf, ratesText, photosOf, safeUrl, availabilityStatusOf } from './format.js';
 
 const thumbs = (a) => {
   const ps = photosOf(a).map(safeUrl).filter(Boolean);
@@ -13,14 +13,14 @@ const BADGE = { 'Disponible': 'badge-dispo', 'Réservé': 'badge-dispo" style="b
 
 function render(box) {
   const mine = state.apartments.filter(a => a.ownerUid === state.user.uid);
-  const rented = mine.filter(a => a.status === 'Loué'), free = mine.filter(a => a.status === 'Disponible');
+  const rented = mine.filter(a => availabilityStatusOf(a) === 'Loué'), free = mine.filter(a => availabilityStatusOf(a) === 'Disponible');
   const estimated = rented.reduce((s, a) => s + Number(ratesOf(a).month || a.price || 0), 0);
   const month = new Date().toISOString().slice(0, 7);
   const collected = state.payments.filter(p => p.status === 'Validé' && p.period === month).reduce((s, p) => s + Number(p.amount || 0), 0);
-  const pending = mine.filter(a => a.status === 'Réservé' || (a.status === 'Loué' && a.departureRequested));
+  const pending = mine.filter(a => availabilityStatusOf(a) === 'Réservé' || (availabilityStatusOf(a) === 'Loué' && a.departureRequested));
 
   const pendingHtml = pending.length ? `<div class="surface-box"><h4 style="margin-bottom:12px">À traiter (${pending.length})</h4>${pending.map(a => {
-    const isBooking = a.status === 'Réservé';
+    const isBooking = availabilityStatusOf(a) === 'Réservé';
     return `<div style="border-top:1px solid var(--border);padding:12px 0"><strong>${esc(a.title)}</strong><p class="muted-text" style="margin:4px 0 10px">${isBooking ? '🔑 Demande de réservation de' : '🚪 Départ signalé par'} ${esc(a.tenantName || 'un locataire')}</p>
       ${isBooking ? `<button class="btn-action-trigger tenant-btn small-btn" data-action="confirm-booking" data-id="${esc(a.id)}">Confirmer</button> <button class="btn-action-trigger danger-btn small-btn" data-action="refuse-booking" data-id="${esc(a.id)}">Refuser</button>`
         : `<button class="btn-action-trigger small-btn" data-action="process-departure" data-id="${esc(a.id)}">Traiter le départ</button>`}</div>`;
@@ -28,12 +28,13 @@ function render(box) {
 
   const list = mine.length ? mine.map(a => {
     const p = safeUrl(photosOf(a)[0]);
-    return `<div class="apartment-card-ui"><div class="apartment-card-image-placeholder">${p ? `<img class="main-photo" src="${esc(p)}" alt="${esc(a.title)}">` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>'}<span class="apartment-card-badge ${BADGE[a.status] || 'badge-loue'}">${esc(a.status)}</span></div>${thumbs(a)}
+    const availability = availabilityStatusOf(a);
+    return `<div class="apartment-card-ui"><div class="apartment-card-image-placeholder">${p ? `<img class="main-photo" src="${esc(p)}" alt="${esc(a.title)}">` : '<i class="fa-solid fa-image" style="font-size:40px;opacity:.3"></i>'}<span class="apartment-card-badge ${BADGE[availability] || 'badge-loue'}">${esc(availability || a.status)}</span></div>${thumbs(a)}
       <div class="apartment-card-details"><div class="apartment-card-location">${esc(a.commune)}</div><div class="apartment-card-title">${esc(a.title)}</div>
       ${(a.propertyNumber || a.unitNumber || a.buildingName) ? `<div class="apartment-card-address-detail">${esc([a.unitNumber ? `Appartement ${a.unitNumber}` : a.propertyNumber ? `N° ${a.propertyNumber}` : '', a.buildingName].filter(Boolean).join(' • '))}</div>` : ''}
       <div class="apartment-card-pricing-row"><div class="apartment-card-price" style="font-size:15px;">${esc(ratesText(a))}</div>
       <div class="owner-apartment-actions"><button class="btn-action-trigger outline-btn small-btn" data-action="edit-apart" data-id="${esc(a.id)}">Modifier</button>
-      ${a.status === 'Disponible' ? `<button class="btn-action-trigger danger-btn small-btn" data-action="delete-apart" data-id="${esc(a.id)}">Supprimer</button>` : ''}</div></div></div>`;
+      ${availability === 'Disponible' ? `<button class="btn-action-trigger danger-btn small-btn" data-action="delete-apart" data-id="${esc(a.id)}">Supprimer</button>` : ''}</div></div></div>`;
   }).join('') : '<div class="blank-slate"><i class="fa-solid fa-building"></i><p>Aucun bien publié.</p></div>';
 
   box.innerHTML = `<div class="stats-grid-row">
@@ -54,10 +55,11 @@ export default {
     onAction('delete-apart', async (el) => {
       requireRole('owner');
       const a = state.apartments.find(x => x.id === el.dataset.id);
-      if (!a || a.status !== 'Disponible') throw new Error('Seuls les biens non loués peuvent être supprimés.');
+      if (!a || availabilityStatusOf(a) !== 'Disponible') throw new Error('Seuls les biens non loués peuvent être supprimés.');
       if (!confirm('Supprimer cette annonce ?')) return;
       await deleteDoc(doc(db, 'apartments', a.id));
-      await Promise.allSettled((a.photoPaths || []).map(p => deleteObject(ref(storage, p))));
+      state.apartments = state.apartments.filter((item) => item.id !== a.id);
+      bus.emit('apartments:changed');
       toast('Annonce supprimée.', 'ok');
     });
   }

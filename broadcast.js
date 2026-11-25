@@ -1,8 +1,9 @@
 import { state } from './state.js';
+import { availabilityStatusOf } from './format.js';
 import { $, esc, toast, onAction, requireRole } from './ui.js';
 import { addView } from './views.js';
 import { ensureChat, postMessage } from './chat-service.js';
-const recipients = () => state.apartments.filter(a => a.ownerUid === state.user.uid && a.status === 'Loué' && a.tenantUid);
+const recipients = () => state.apartments.filter(a => a.ownerUid === state.user.uid && availabilityStatusOf(a) === 'Loué' && a.tenantUid);
 function render(box) {
   box.innerHTML = `<div class="surface-box"><h4>Diffusion aux locataires actifs</h4><p class="muted-text">Destinataires : ${recipients().length} locataire(s) actif(s).</p>
     <div class="form-input-container no-icon"><textarea id="broadcast-msg" rows="4" placeholder="Votre message..."></textarea></div>

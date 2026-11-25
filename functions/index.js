@@ -9,6 +9,7 @@ import { matchesSavedSearch } from './criteria.js';
 initializeApp();
 const db = getFirestore();
 const INVALID_FID_CODES = new Set(['messaging/registration-token-not-registered', 'messaging/invalid-registration-token']);
+const availabilityOf = (apartment) => apartment?.availabilityStatus || (['Disponible', 'Réservé', 'Loué'].includes(apartment?.status) ? apartment.status : '');
 
 function stableId(namespace, key) {
   return `${namespace}_${createHash('sha256').update(key).digest('hex').slice(0, 48)}`;
@@ -128,7 +129,7 @@ export const notifyMatchingTenants = onDocumentCreated(
   { document: 'apartments/{apartmentId}', retry: true },
   async (event) => {
   const apartment = event.data?.data();
-  if (!apartment || apartment.status !== 'Disponible') return;
+  if (!apartment || availabilityOf(apartment) !== 'Disponible' || apartment.status !== 'publie') return;
   const tenants = await db.collection('users').where('role', '==', 'tenant').get();
   const work = tenants.docs.map(async (tenant) => {
     const profile = tenant.data();
@@ -226,7 +227,7 @@ export const notifyApartmentActivity = onDocumentUpdated(
   const apartmentId = event.params.apartmentId;
   const notices = [];
 
-  if (before.status === 'Disponible' && after.status === 'Réservé' && after.tenantUid) {
+  if (availabilityOf(before) === 'Disponible' && availabilityOf(after) === 'Réservé' && after.tenantUid) {
     notices.push(createNotification(`${event.id}:booking-request`, {
       toUid: after.ownerUid,
       fromUid: after.tenantUid,
@@ -237,7 +238,7 @@ export const notifyApartmentActivity = onDocumentUpdated(
       tab: 'owner-apparts'
     }));
   }
-  if (before.status === 'Réservé' && after.status === 'Loué' && after.tenantUid) {
+  if (availabilityOf(before) === 'Réservé' && availabilityOf(after) === 'Loué' && after.tenantUid) {
     notices.push(createNotification(`${event.id}:booking-confirmed`, {
       toUid: after.tenantUid,
       fromUid: after.ownerUid,
@@ -248,7 +249,7 @@ export const notifyApartmentActivity = onDocumentUpdated(
       tab: 'my-rental'
     }));
   }
-  if (before.status === 'Réservé' && after.status === 'Disponible' && before.tenantUid) {
+  if (availabilityOf(before) === 'Réservé' && availabilityOf(after) === 'Disponible' && before.tenantUid) {
     notices.push(createNotification(`${event.id}:booking-closed`, {
       toUid: before.tenantUid,
       fromUid: after.ownerUid || 'system',
@@ -270,7 +271,7 @@ export const notifyApartmentActivity = onDocumentUpdated(
       tab: 'owner-apparts'
     }));
   }
-  if (before.status === 'Loué' && after.status === 'Disponible' && before.tenantUid) {
+  if (availabilityOf(before) === 'Loué' && availabilityOf(after) === 'Disponible' && before.tenantUid) {
     notices.push(createNotification(`${event.id}:departure-complete`, {
       toUid: before.tenantUid,
       fromUid: after.ownerUid,
@@ -283,7 +284,7 @@ export const notifyApartmentActivity = onDocumentUpdated(
   }
 
   const trackedFields = [
-    'status', 'title', 'price', 'rates', 'reference', 'avenue', 'landmark', 'commune',
+    'status', 'availabilityStatus', 'title', 'price', 'rates', 'reference', 'avenue', 'landmark', 'commune',
     'type', 'snel', 'water', 'garantie', 'mapsUrl', 'photos', 'photoUrl',
     'propertyNumber', 'unitNumber', 'buildingName'
   ];

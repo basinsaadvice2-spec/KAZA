@@ -7,14 +7,36 @@ service cloud.firestore {
     function apartmentPath(id) { return /databases/$(db)/documents/apartments/$(id); }
     function role() { return get(userPath(me())).data.get('role', null); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
-    function tenantKeys() { return ['status','tenantUid','tenantName','paymentStatus','reservedAt','departureRequested']; }
+    function availability(apartment) {
+      return apartment.get('availabilityStatus', apartment.get('status', null));
+    }
+    function validPhoto(photo, allowLegacyUrl) {
+      return photo is string && (
+        (photo.size() <= 205000 && photo.matches('^data:image/(webp|jpeg);base64,[A-Za-z0-9+/]+={0,2}$'))
+        || (allowLegacyUrl && photo.size() <= 2048 && photo.matches('^https://.{1,2048}$'))
+      );
+    }
+    function validPhotoAt(photos, index, allowLegacyUrl) {
+      return photos.size() <= index || validPhoto(photos[index], allowLegacyUrl);
+    }
+    function validPhotos(allowLegacyUrl) {
+      let photos = request.resource.data.photos;
+      return photos is list && photos.size() >= 1 && photos.size() <= 4
+        && validPhotoAt(photos, 0, allowLegacyUrl)
+        && validPhotoAt(photos, 1, allowLegacyUrl)
+        && validPhotoAt(photos, 2, allowLegacyUrl)
+        && validPhotoAt(photos, 3, allowLegacyUrl);
+    }
+    function tenantKeys() { return ['status','availabilityStatus','tenantUid','tenantName','paymentStatus','reservedAt','departureRequested']; }
     function listingKeys() {
       return ['id','title','avenue','landmark','reference','rates','price','type','commune',
         'propertyNumber','unitNumber','buildingName','garantie','snel','water','mapsUrl',
-        'photos','photoUrl','photoPaths','ownerEmail','ownerName','ownerPhone','ownerType','updatedAt'];
+        'photos','photoUrl','ownerId','ownerUid','status','availabilityStatus',
+        'ownerEmail','ownerName','ownerPhone','ownerType','updatedAt'];
     }
     function clearsTenant() {
-      return request.resource.data.status == 'Disponible'
+      return request.resource.data.status == 'publie'
+        && request.resource.data.availabilityStatus == 'Disponible'
         && request.resource.data.get('tenantUid', null) == null
         && request.resource.data.get('tenantName', null) == null
         && request.resource.data.get('paymentStatus', null) == null
@@ -32,6 +54,7 @@ service cloud.firestore {
       allow update: if signedIn() && me() == uid
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.role == resource.data.role
+        && request.resource.data.accountType == resource.data.accountType
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notificationPrefs','savedSearch']);
       allow delete: if false;
 
@@ -54,7 +77,8 @@ service cloud.firestore {
           && request.resource.data.uid == uid
           && request.resource.data.apartmentId == apartmentId
           && request.resource.data.keys().hasOnly(['uid','apartmentId','ownerUid','title','createdAt'])
-          && get(apartmentPath(apartmentId)).data.status == 'Disponible'
+          && get(apartmentPath(apartmentId)).data.status == 'publie'
+          && availability(get(apartmentPath(apartmentId)).data) == 'Disponible'
           && get(apartmentPath(apartmentId)).data.ownerUid == request.resource.data.ownerUid
           && pairedFollowerExists();
         allow delete: if signedIn() && me() == uid && role() == 'tenant'
@@ -84,39 +108,60 @@ service cloud.firestore {
     }
 
     match /apartments/{id} {
-      allow read: if signedIn();
+      allow get, list: if signedIn() && (
+        (role() == 'owner' && resource.data.ownerUid == me())
+        || (role() == 'tenant' && (
+          (resource.data.status == 'publie' && availability(resource.data) == 'Disponible')
+          || resource.data.get('tenantUid', null) == me()
+        ))
+      );
       allow create: if signedIn() && role() == 'owner'
         && request.resource.data.ownerUid == me()
-        && request.resource.data.status == 'Disponible';
+        && request.resource.data.ownerId == me()
+        && request.resource.data.status == 'publie'
+        && request.resource.data.availabilityStatus == 'Disponible'
+        && validPhotos(false)
+        && request.resource.data.keys().hasOnly([
+          'id','title','avenue','landmark','reference','rates','price','type','commune',
+          'propertyNumber','unitNumber','buildingName','garantie','snel','water','mapsUrl','photos',
+          'ownerId','ownerUid','ownerEmail','ownerName','ownerPhone','ownerType',
+          'updatedAt','status','availabilityStatus','createdAt'
+        ]);
       allow update: if signedIn() && (
         (resource.data.ownerUid == me() && request.resource.data.ownerUid == resource.data.ownerUid
-          && request.resource.data.status == resource.data.status && changed().hasOnly(listingKeys()))
-        || (resource.data.ownerUid == me() && resource.data.status == 'Réservé'
-          && request.resource.data.status == 'Loué' && request.resource.data.tenantUid == resource.data.tenantUid
-          && request.resource.data.paymentStatus == 'En attente' && changed().hasOnly(['status','paymentStatus']))
-        || (resource.data.ownerUid == me() && resource.data.status == 'Loué'
+          && request.resource.data.ownerId == me()
+          && request.resource.data.status == 'publie'
+          && request.resource.data.availabilityStatus == availability(resource.data)
+          && validPhotos(true) && changed().hasOnly(listingKeys()))
+        || (resource.data.ownerUid == me() && availability(resource.data) == 'Réservé'
+          && request.resource.data.status == 'publie' && request.resource.data.availabilityStatus == 'Loué'
+          && request.resource.data.tenantUid == resource.data.tenantUid
+          && request.resource.data.paymentStatus == 'En attente' && changed().hasOnly(['status','availabilityStatus','paymentStatus']))
+        || (resource.data.ownerUid == me() && availability(resource.data) == 'Loué'
           && request.resource.data.paymentStatus == 'À jour' && changed().hasOnly(['paymentStatus']))
-        || (resource.data.ownerUid == me() && resource.data.status == 'Réservé' && clearsTenant()
+        || (resource.data.ownerUid == me() && availability(resource.data) == 'Réservé' && clearsTenant()
           && changed().hasOnly(tenantKeys()))
-        || (resource.data.ownerUid == me() && resource.data.status == 'Loué'
+        || (resource.data.ownerUid == me() && availability(resource.data) == 'Loué'
           && resource.data.get('departureRequested', false) == true && clearsTenant()
           && changed().hasOnly(tenantKeys()))
-        || (role() == 'tenant' && resource.data.status == 'Disponible'
-          && request.resource.data.status == 'Réservé'
+        || (role() == 'tenant' && availability(resource.data) == 'Disponible'
+          && request.resource.data.status == 'publie'
+          && request.resource.data.availabilityStatus == 'Réservé'
           && request.resource.data.tenantUid == me()
           && request.resource.data.paymentStatus == null
-          && changed().hasOnly(tenantKeys()))
+          && changed().hasOnly(['status','availabilityStatus','tenantUid','tenantName','paymentStatus','reservedAt']))
         || (resource.data.get('tenantUid', null) == me()
-          && resource.data.status == 'Réservé'
-          && request.resource.data.status == 'Disponible'
+          && availability(resource.data) == 'Réservé'
+          && request.resource.data.status == 'publie'
+          && request.resource.data.availabilityStatus == 'Disponible'
           && clearsTenant()
           && changed().hasOnly(tenantKeys()))
         || (resource.data.get('tenantUid', null) == me()
-          && resource.data.status == 'Loué'
+          && availability(resource.data) == 'Loué'
           && request.resource.data.get('departureRequested', false) == true
           && changed().hasOnly(['departureRequested']))
       );
-      allow delete: if signedIn() && resource.data.ownerUid == me() && resource.data.status == 'Disponible';
+      allow delete: if signedIn() && resource.data.ownerUid == me() && availability(resource.data) == 'Disponible';
 
       match /followers/{uid} {
         function pairedUserFollowExists() {
@@ -127,7 +172,8 @@ service cloud.firestore {
           && request.resource.data.uid == uid
           && request.resource.data.apartmentId == id
           && request.resource.data.keys().hasOnly(['uid','apartmentId','ownerUid','title','createdAt'])
-          && get(apartmentPath(id)).data.status == 'Disponible'
+          && get(apartmentPath(id)).data.status == 'publie'
+          && availability(get(apartmentPath(id)).data) == 'Disponible'
           && get(apartmentPath(id)).data.ownerUid == request.resource.data.ownerUid
           && pairedUserFollowExists();
         allow delete: if signedIn() && me() == uid && role() == 'tenant'
@@ -145,7 +191,7 @@ service cloud.firestore {
         && request.resource.data.method in ['Mobile Money', 'Espèces', 'Banque']
         && request.resource.data.keys().hasOnly(['aptId','aptTitle','ownerUid','tenantUid','tenantName','amount','period','method','reference','status','createdAt'])
         && get(apartmentPath(request.resource.data.aptId)).data.get('tenantUid', null) == me()
-        && get(apartmentPath(request.resource.data.aptId)).data.status == 'Loué'
+        && availability(get(apartmentPath(request.resource.data.aptId)).data) == 'Loué'
         && get(apartmentPath(request.resource.data.aptId)).data.ownerUid == request.resource.data.ownerUid;
       allow update: if signedIn() && resource.data.ownerUid == me() && resource.data.status == 'En attente'
         && request.resource.data.status in ['Validé', 'Refusé']
