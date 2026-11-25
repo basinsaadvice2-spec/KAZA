@@ -64,12 +64,33 @@ export default {
 
     onAction('book', async (el) => {
       requireRole('tenant');
-      if (!confirm('Envoyer une demande de réservation au bailleur ?')) return;
-      await runTransaction(db, async (tx) => { // évite que deux locataires réservent le même bien
-        const r = aptRef(el.dataset.id), s = await tx.get(r);
-        if (!s.exists() || availabilityStatusOf(s.data()) !== 'Disponible') throw new Error("Ce logement n'est plus disponible.");
-        tx.update(r, { status: 'publie', availabilityStatus: 'Réservé', tenantUid: state.user.uid, tenantName: state.user.name, paymentStatus: null, reservedAt: serverTimestamp(), departureReviewId: null });
-      });
+      if (!confirm('Envoyer une demande de réservation au bailleur ?\n\nAucun montant ne sera versé à cette étape. Le bailleur devra confirmer la demande.')) return;
+      try {
+        await runTransaction(db, async (tx) => { // évite que deux locataires réservent le même bien
+          const r = aptRef(el.dataset.id), s = await tx.get(r);
+          if (!s.exists() || availabilityStatusOf(s.data()) !== 'Disponible') throw new Error("Ce logement n'est plus disponible.");
+          const update = {
+            status: 'publie',
+            availabilityStatus: 'Réservé',
+            tenantUid: state.user.uid,
+            tenantName: state.user.name,
+            paymentStatus: null,
+            reservedAt: serverTimestamp()
+          };
+          // Ne transmet ce champ que s'il existe; ainsi les règles plus anciennes restent compatibles.
+          if (s.data().departureReviewId) update.departureReviewId = null;
+          tx.update(r, update);
+        });
+      } catch (error) {
+        console.error('[KAZA] Demande de réservation refusée', error);
+        if (error?.code?.includes('permission-denied')) {
+          throw new Error('Firestore refuse cette réservation. Vérifiez que votre profil a le rôle « tenant » et que les règles Firestore à jour sont publiées.');
+        }
+        if (!navigator.onLine || ['unavailable', 'deadline-exceeded', 'network-request-failed'].some((part) => error?.code?.includes(part))) {
+          throw new Error('Connexion indisponible. Vérifiez Internet puis réessayez.');
+        }
+        throw new Error(error.message || 'La demande de réservation n’a pas été enregistrée. Réessayez.');
+      }
       toast('Demande envoyée. Le bailleur doit la confirmer.', 'ok');
     });
     onAction('cancel-booking', async (el) => { requireRole('tenant'); if (confirm('Annuler votre demande ?')) await updateDoc(aptRef(el.dataset.id), CLEAR); });
