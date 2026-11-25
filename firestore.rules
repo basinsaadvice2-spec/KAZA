@@ -109,7 +109,9 @@ service cloud.firestore {
     }
 
     match /tenantReferences/{tenantUid}/reviews/{reviewId} {
-      allow get, list: if signedIn() && role() == 'owner';
+  // Lecture temporairement bloquée pour éviter l'accès
+  // aux évaluations de locataires sans autorisation vérifiée.
+  allow get, list: if false;
       allow create: if signedIn() && role() == 'owner'
         && request.resource.data.keys().hasAll(['tenantUid','reviewerUid','apartmentId','apartmentTitle','paymentSpeed','propertyCare','createdAt'])
         && request.resource.data.keys().hasOnly(['tenantUid','reviewerUid','apartmentId','apartmentTitle','paymentSpeed','propertyCare','createdAt'])
